@@ -14,6 +14,7 @@ def clientMessage(message, client_address, sock):
     # gets the command/inoput from the client
     messageSplit = message.decode().split()
     command = messageSplit[0]
+    print("Command is:", command)
 
     if command == "register":
         # separate command 
@@ -48,19 +49,25 @@ def clientMessage(message, client_address, sock):
     
     elif command == "tell":
         recipient_username = messageSplit[1]
-        # Find recipient
-        recipient = None
+        found = False
         for client in clients:
             if client.username == recipient_username:
                 recipient = client
+                found = True
                 break
-        if recipient:
-            # Send recipient's port back to the sender
-            response = f"Recipient port: {recipient.port}, Recipient IP: {recipient.address}"
+        if found:
+            response = f"INFO: {recipient.port}:{recipient.address}"
             sock.sendto(response.encode(), client_address)
         else:
-            # If recipient not found, inform the sender
-            sock.sendto("Recipient not found".encode(), client_address)
+            sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
+        
+    elif command == "shout":
+        theList = "SHOUT\n"
+        for client in clients:
+            theList += f"{client.address}-{client.port}\n"
+        # send completed list 
+        sock.sendto(theList.encode(), client_address)
+        
 
 def main():
     # make the socket

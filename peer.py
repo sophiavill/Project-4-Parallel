@@ -7,20 +7,48 @@ import sys
 CENTRAL_SERVER_IP = '128.186.120.158' 
 CENTRAL_SERVER_PORT = 8008
 USERNAME = ""
-MESSAGE = ""
+
+currentMessage = ""
+
 
 def receiveMessages(sock, message_queue):
     while True:
         try:
             message, _ = sock.recvfrom(4096) 
-            decoded_message = message.decode()
+            message = message.decode()
 
-            if decoded_message.startswith("Recipient port"):
-                # Do something with the message indicating recipient's port
-                # For example, you can print it, extract the port, etc.
-                print("++++++++Received recipient's port:", decoded_message)
+            if message.startswith("INFO"):
+                # INFO: {recipient.port}:{recipient.address} get in this format
+                messageSplit = message.split(":")
+                port = int(messageSplit[1])
+                address = messageSplit[2]
+
+                messageToSend = f"{USERNAME}: {currentMessage}"
+                sock.sendto(messageToSend.encode(), (address, port))
+                print("Message sent.\n" + USERNAME + "> ", end="")
+
+            elif message.startswith("NO INFO"):
+                # NO INFO: User {recipient_username} is not online! get in this format
+                messageParts = message.split(":", 1)
+                print(messageParts[1])
+                print(USERNAME + "> ", end="")
+
+
+            elif message.startswith("SHOUT"):
+                print(message)
+                lines = message.split('\n')
+                for line in lines[1:]:
+                    lineSplit = line.split('-')
+                    if len(lineSplit) >= 2:
+                        address = lineSplit[0]
+                        port = int(lineSplit[1])
+                        finalMessage = f"*{USERNAME}*: " + currentMessage
+                        sock.sendto(finalMessage.encode(), (address, port))
+                
+                print("Message sent.\n" + USERNAME + "> ", end="")
+                
             else:
-                message_queue.put(f"\n{decoded_message}")
+                message_queue.put(f"\n{message}")
 
         except Exception as e:
             message_queue.put(f"An error occurred: {e}")
@@ -49,12 +77,19 @@ def serverRegister(sock, own_port):
     global USERNAME 
     USERNAME = username
 
+    # global myClient
+    # myClient.username = username
+
     message = f"register {own_port} {username}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
 def whoCommand(sock):
     # get users from server
     message = "who".encode()
+    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+
+def shoutCommand(sock):
+    message = "shout".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
 def tellCommand(recipient, sock, listen_port):
@@ -80,23 +115,26 @@ def user_interface(sock, listen_port, message_queue):
     print_menu()
     
     while True:
-        command = input()
-        commandSplit = command.split()
+        allCommand = input()
+        commandSplit = allCommand.split()
         command = commandSplit[0]
 
         if command == "who":
             whoCommand(sock)
 
         elif command == "shout":
-            print("shout coming soon")
+            message = commandSplit[1]
+            global currentMessage
+            currentMessage = message
+            shoutCommand(sock)
 
         elif command == "tell":
+            commandSplit = allCommand.split(" ", 2)
             recipient = commandSplit[1] 
+            message = commandSplit[2] 
+            # global currentMessage
+            currentMessage = message
             tellCommand(recipient, sock, listen_port)
-            # peer_ip = input("> Enter the peer's IP address: ")
-            # peer_port = int(input("> Enter the peer's port: "))
-            # message = input("> Enter your message: ")
-            # sock.sendto(message.encode(), (peer_ip, peer_port))
 
         elif command == "exit":
             message_queue.put("exit")  # Signal to stop the message printing thread
@@ -108,7 +146,7 @@ def user_interface(sock, listen_port, message_queue):
        
         else:
             print("Command not supported.")
-            print(USERNAME + "> ")
+            print(USERNAME + "> ", end="")
 
 def main(listen_port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
