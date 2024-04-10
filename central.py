@@ -4,49 +4,79 @@ CENTRAL_SERVER_IP = '0.0.0.0'  # Listen on all available interfaces
 CENTRAL_SERVER_PORT = 8008  # Port to listen on
 
 
+class Client:
+    def __init__(self, username, address, port):
+        self.username = username
+        self.address = address
+        self.port = port
 
-def handle_client_message(message, client_address, sock):
-    """Handle messages from clients."""
-    message_parts = message.decode().split()
-    command = message_parts[0]
+def clientMessage(message, client_address, sock):
+    # gets the command/inoput from the client
+    messageSplit = message.decode().split()
+    command = messageSplit[0]
 
     if command == "register":
-        port = int(message_parts[1])
-        username = message_parts[2]
-        # Add the client to the list of active instances
-        active_instances[f"{username}:{client_address[0]}:{port}"] = client_address
+        # separate command 
+        port = int(messageSplit[1])
+        username = messageSplit[2]
+        # get just the address
+        address = client_address[0]
+
+        # add client to list
+        newClient = Client(username, address, port)
+        clients.append(newClient)
         print(f"Registered: {client_address[0]}:{port}")
-    elif command == "list":
+
+    elif command == "who":
+        num_users = 0
         theList = ""
-        # Send the list of active instances to the client
-        for key, value in active_instances.items():
-            username, address, port = key.split(":")
-            theList += f"Username: {username}, Address: {value[0]}, Port: {value[1]}\n"
-        sock.sendto(theList.encode(), client_address)
+        for client in clients:
+            num_users += 1
+            theList += f"{client.username}: address: {client.address}, port: {client.port}\n"
+        # send completed list 
+        message = "\nTotal " + str(num_users) + " users(s) online:\n"
+        message += theList
+        sock.sendto(message.encode(), client_address)
 
     elif command == "exit":
-        # take off the list
-        port = int(message_parts[1])
-        username = message_parts[2]
-        if f"{username}:{client_address[0]}:{port}" in active_instances:
-            active_instances.pop(f"{username}:{client_address[0]}:{port}")
+        port = int(messageSplit[1])
+        username = messageSplit[2]
+        # remove from list to exit
+        for client in clients:
+            if client.username == username:
+                clients.remove(client)
+    
+    elif command == "tell":
+        recipient_username = messageSplit[1]
+        # Find recipient
+        recipient = None
+        for client in clients:
+            if client.username == recipient_username:
+                recipient = client
+                break
+        if recipient:
+            # Send recipient's port back to the sender
+            response = f"Recipient port: {recipient.port}, Recipient IP: {recipient.address}"
+            sock.sendto(response.encode(), client_address)
+        else:
+            # If recipient not found, inform the sender
+            sock.sendto("Recipient not found".encode(), client_address)
 
 def main():
-    # Create a UDP socket
+    # make the socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Bind the socket to the server's IP and port
+    # bind
     sock.bind((CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-
     print(f"Central server is running on {CENTRAL_SERVER_IP}:{CENTRAL_SERVER_PORT}")
 
-    global active_instances
-    active_instances = {}
+    global clients
+    clients = []
 
     while True:
         try:
-            # Wait for a message from a client
-            message, client_address = sock.recvfrom(4096)  # Buffer size is 4096 bytes
-            handle_client_message(message, client_address, sock)
+            # get client input
+            message, client_address = sock.recvfrom(4096)
+            clientMessage(message, client_address, sock)
         except KeyboardInterrupt:
             print("Server is shutting down.")
             break
