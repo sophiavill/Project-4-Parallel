@@ -2,10 +2,11 @@ import socket
 import threading
 import queue
 import sys
+import re
 
 # central server info
 CENTRAL_SERVER_IP = '0.0.0.0' 
-#ENTRAL_SERVER_IP = '128.186.120.158' 
+#CENTRAL_SERVER_IP = '128.186.120.158' 
 CENTRAL_SERVER_PORT = 8008
 USERNAME = ""
 IN_GAME = False
@@ -13,14 +14,48 @@ IN_GAME = False
 
 currentMessage = ""
 
+expectedResonse = []
+
 
 def receiveMessages(sock, message_queue):
     while True:
         try:
             message, _ = sock.recvfrom(4096) 
             message = message.decode()
+            
+            
+            if message.startswith("MATCH"):
+                
+                messageSplit = message.split(":")
+                port = int(messageSplit[1])
+                address = messageSplit[2]
+            
+                messageToSend = f"{currentMessage} \n Do you want to accept the game from {USERNAME}? (accept/decline): "
+                sock.sendto(messageToSend.encode(), (address, port))
 
-            if message.startswith("INFO"):
+                
+                
+                """
+                #clean up the message (get everything from within <>)
+                invite = re.search(r'<([^>]+)>', currentMessage)
+                if invite:
+                    #extract the invite group value (should be invite string)
+                    extractedRequest = invite.group(1)
+                    print("Extracted command:", extractedRequest)
+        
+                            
+                #incoming match request, we need to see if we expected this
+                #ifGame = False
+                #ifGame = checkIfExpectResonse(potentialMatch)
+                #see if game on
+                #if ifGame == True:
+                    #print("Game on! For the Emperor!")
+                """
+            
+
+                
+
+            elif message.startswith("INFO"):
                 # INFO: {recipient.port}:{recipient.address} get in this format
                 messageSplit = message.split(":")
                 port = int(messageSplit[1])
@@ -53,6 +88,13 @@ def receiveMessages(sock, message_queue):
         except Exception as e:
             message_queue.put(f"An error occurred: {e}")
             break
+
+def checkIfExpectResonse(currentMessage):
+    global expectedResonse
+    for response in expectedResonse:
+        if response == currentMessage:
+            return True
+    return False
 
 def printMessage(message_queue):
     while True:
@@ -183,6 +225,16 @@ def user_interface(sock, listen_port, message_queue):
                     faction = 'X'
                 #constructs the invite to be sent to the other guy
                 matchStr = USERNAME + " " + "invited your for a game <match" + " " + USERNAME + " " + faction + " " + str(playTime) + ">"
+
+                #this is the going to be the expected response along with who we expect to be sending it
+                #we might need to change our approach here
+                expectedResponse = "match" + " " + USERNAME + " " + faction + " " + str(playTime)
+                #adds to expected reponse - Experimental code now
+                global expectedResonse
+                expectedResonse.append(expectedResponse)
+                #for response in expectedResonse:
+                    #print("this is what we are expecting to recieve: ", response)
+
                     
                 #now calls a matchCommand to send this invite to the server to then send to player2
                 matchCommand(matchStr, player2, sock, listen_port)

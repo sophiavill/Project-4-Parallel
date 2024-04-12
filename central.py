@@ -9,6 +9,7 @@ class Client:
         self.username = username
         self.address = address
         self.port = port
+        self.pendingOps = [] #experimental, may hold potential ops who have sent match requests
 
 def clientMessage(message, client_address, sock):
     # gets the command/inoput from the client
@@ -70,7 +71,7 @@ def clientMessage(message, client_address, sock):
                 found = True
                 break
         if found:
-            response = f"INFO: {recipient.port}:{recipient.address}"
+            response = f"MATCH: {recipient.port}:{recipient.address}"
             sock.sendto(response.encode(), client_address)
         else:
             sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
