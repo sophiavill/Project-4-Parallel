@@ -153,14 +153,24 @@ def user_interface(sock, listen_port, message_queue):
         
         elif command == "match":
             # match <name> <b|w> [t]
-            if len(commandSplit) >= 3:
+            if len(commandSplit) >= 2:
                 player2 = commandSplit[1]
-                color = commandSplit[2]
+                #Default faction is X unless specified otherwise
+                faction = 'X'
+                if len(commandSplit) >2 and commandSplit[2].upper() in ['X', 'O']:
+                    faction = commandSplit[2].upper()
+                
+                #set default play time
                 playTime = 600
-                if len(commandSplit) == 4:
-                    playTime = int(commandSplit[3])
+                if len(commandSplit) >= 4:
+                    try:
+                        #In case user specifies the time
+                        playTime = int(commandSplit[3])
+                    except ValueError:
+                        print("Invalid play time provided. Using default of 600 seconds.")
+                
 
-                print("Player 2: " + player2 + " color of me " + color + "play time " + str(playTime))
+                print("Player 2: " + player2 + ", Player faction: " + faction + ", Play time: " + str(playTime))
 
                 # ask the server if that user can play
                 # sever will send message asking "can you play"
