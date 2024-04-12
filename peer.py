@@ -169,9 +169,18 @@ def user_interface(sock, listen_port, message_queue):
                     except ValueError:
                         print("Invalid play time provided. Using default of 600 seconds.")
                 
-
-                print("Player 2: " + player2 + ", Player faction: " + faction + ", Play time: " + str(playTime))
-
+                #print("Player 2: " + player2 + ", Player faction: " + faction + ", Play time: " + str(playTime))
+                #reverses the color
+                if faction == 'X':
+                    faction = 'O'
+                else:
+                    faction = 'X'
+                #constructs the invite to be sent to the other guy
+                matchStr = USERNAME + " " + "invited your for a game <match" + " " + USERNAME + " " + faction + " " + str(playTime) + ">"
+                    
+                #now calls a matchCommand to send this invite to the server to then send to player2
+                #need to also save what player1 expects, if we recieve it, then we in game mode and shit
+                
                 # ask the server if that user can play
                 # sever will send message asking "can you play"
                 # then the client will get the print out to match 
