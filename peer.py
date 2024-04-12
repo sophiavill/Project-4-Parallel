@@ -94,6 +94,10 @@ def tellCommand(recipient, sock, listen_port):
     message = f"tell {recipient}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
+def matchCommand(message, recipient, sock, listen_port):
+    message =f"match {recipient} {message}".encode()
+    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+    
 def exitCommand(sock, own_port):
     message = f"exit {own_port} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
@@ -104,7 +108,7 @@ def print_menu():
     print("  shout <msg>             # shout <msg> to every one online")
     print("  tell <name> <msg>       # tell user <name> message")
     print("  exit                    # quit the system")
-    print( "  match <name> <b|w> [t]  # Try to start a game")
+    print( "  match <name> <X|O> [t]  # Try to start a game")
     print("  ?                       # print this message")
     print(USERNAME + "> ", end="")
 
@@ -143,6 +147,8 @@ def user_interface(sock, listen_port, message_queue):
                 print("Missing user or message")
                 print(USERNAME + "> ", end="")
 
+            
+
         elif command == "exit":
             message_queue.put("exit")
             exitCommand(sock, listen_port)
@@ -179,6 +185,10 @@ def user_interface(sock, listen_port, message_queue):
                 matchStr = USERNAME + " " + "invited your for a game <match" + " " + USERNAME + " " + faction + " " + str(playTime) + ">"
                     
                 #now calls a matchCommand to send this invite to the server to then send to player2
+                matchCommand(matchStr, player2, sock, listen_port)
+                currentMessage = matchStr
+
+
                 #need to also save what player1 expects, if we recieve it, then we in game mode and shit
                 
                 # ask the server if that user can play

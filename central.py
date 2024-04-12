@@ -60,6 +60,20 @@ def clientMessage(message, client_address, sock):
             sock.sendto(response.encode(), client_address)
         else:
             sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
+
+    elif command == "match":
+        recipient_username = messageSplit[1]
+        found = False
+        for client in clients:
+            if client.username == recipient_username:
+                recipient = client
+                found = True
+                break
+        if found:
+            response = f"INFO: {recipient.port}:{recipient.address}"
+            sock.sendto(response.encode(), client_address)
+        else:
+            sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
         
     elif command == "shout":
         theList = "SHOUT\n"
