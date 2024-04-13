@@ -32,28 +32,7 @@ def receiveMessages(sock, message_queue):
             
                 messageToSend = f"{currentMessage} \n Do you want to accept the game from {USERNAME}? (accept/decline): "
                 sock.sendto(messageToSend.encode(), (address, port))
-
-                
-                
-                """
-                #clean up the message (get everything from within <>)
-                invite = re.search(r'<([^>]+)>', currentMessage)
-                if invite:
-                    #extract the invite group value (should be invite string)
-                    extractedRequest = invite.group(1)
-                    print("Extracted command:", extractedRequest)
-        
-                            
-                #incoming match request, we need to see if we expected this
-                #ifGame = False
-                #ifGame = checkIfExpectResonse(potentialMatch)
-                #see if game on
-                #if ifGame == True:
-                    #print("Game on! For the Emperor!")
-                """
             
-
-                
 
             elif message.startswith("INFO"):
                 # INFO: {recipient.port}:{recipient.address} get in this format
@@ -89,12 +68,6 @@ def receiveMessages(sock, message_queue):
             message_queue.put(f"An error occurred: {e}")
             break
 
-def checkIfExpectResonse(currentMessage):
-    global expectedResonse
-    for response in expectedResonse:
-        if response == currentMessage:
-            return True
-    return False
 
 def printMessage(message_queue):
     while True:
@@ -137,7 +110,7 @@ def tellCommand(recipient, sock, listen_port):
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
 def matchCommand(message, recipient, sock, listen_port):
-    message =f"match {recipient} {message}".encode()
+    message =f"match {recipient} {message} {listen_port}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     
 def exitCommand(sock, own_port):
@@ -224,18 +197,8 @@ def user_interface(sock, listen_port, message_queue):
                 else:
                     faction = 'X'
                 #constructs the invite to be sent to the other guy
-                matchStr = USERNAME + " " + "invited your for a game <match" + " " + USERNAME + " " + faction + " " + str(playTime) + ">"
+                matchStr = USERNAME + " " + "invited you for a game!" + " " + "faction:" + " " + faction + " " + "time:" + " " + str(playTime)
 
-                #this is the going to be the expected response along with who we expect to be sending it
-                #we might need to change our approach here
-                expectedResponse = "match" + " " + USERNAME + " " + faction + " " + str(playTime)
-                #adds to expected reponse - Experimental code now
-                global expectedResonse
-                expectedResonse.append(expectedResponse)
-                #for response in expectedResonse:
-                    #print("this is what we are expecting to recieve: ", response)
-
-                    
                 #now calls a matchCommand to send this invite to the server to then send to player2
                 matchCommand(matchStr, player2, sock, listen_port)
                 currentMessage = matchStr
