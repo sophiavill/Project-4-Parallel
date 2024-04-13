@@ -45,9 +45,18 @@ def receiveMessages(sock, message_queue):
             
                 messageToSend = f"{currentMessage}" 
                 sock.sendto(messageToSend.encode(), (address, port))
-                print("Invite sent. \n" + USERNAME + ">", end="")
+                print("Invite was declined. \n" + USERNAME + ">", end="")
 
-            
+            elif message.startswith("ACCEPT"):
+
+                messageSplit = message.split(":")
+                port = int(messageSplit[1])
+                address = messageSplit[2]
+
+                messageToSend = f"{currentMessage}"
+                sock.sendto(messageToSend.encode(), (address, port))
+                print("Invite was accepted. \n" + USERNAME + ">", end="")
+
 
             elif message.startswith("INFO"):
                 # INFO: {recipient.port}:{recipient.address} get in this format
@@ -133,6 +142,10 @@ def matchCommand(message, recipient, sock, listen_port):
 def declineCommand(message, recipient, sock, listen_port):
     message = f"decline {recipient} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+
+def acceptCommand(message, recipient, sock, listen_port):
+    message = f"accept {recipient} {USERNAME}".encode()
+    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     
 def exitCommand(sock, own_port):
     message = f"exit {own_port} {USERNAME}".encode()
@@ -210,7 +223,7 @@ def user_interface(sock, listen_port, message_queue):
         elif command == "decline":
             if len(commandSplit) >= 2:
                 player2 = commandSplit[1]
-                message = f"{USERNAME} has decline your invite!"
+                message = f"{USERNAME} has declined your invite!"
                 
                 declineCommand(message, player2, sock, listen_port)
                 currentMessage = message
@@ -218,6 +231,19 @@ def user_interface(sock, listen_port, message_queue):
             else:
                 print("Missing recipient username.")
                 print(USERNAME + "> ", end="")
+
+        elif command == "accept":
+            if len(commandSplit) >= 2:
+                player2 = commandSplit[1]
+                message = f"{USERNAME} has accepted your invite!"
+
+                acceptCommand(message, player2, sock, listen_port)
+                currentMessage = message
+
+            else:
+                print("Missing recipient username.")
+                print(USERNAME + "> ", end="")
+
     
         #the accept command will be the exact same
         #WITH the connection functionality and of course a different message

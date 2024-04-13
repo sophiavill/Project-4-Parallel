@@ -156,7 +156,50 @@ def clientMessage(message, client_address, sock):
         else:
             sock.sendto(f"NO INFO: User {recipient_username} has not sent you an invite!".encode(), client_address)
 
+    elif command == "accept":
+        recipient_username = messageSplit[1] #gets the username of the recipient
+        sender_username = messageSplit[2] #gets the username of the sender
         
+        #recipient for loop
+        for client in clients:
+            if client.username == recipient_username:
+                recipient = client
+                #remove the person you invited to a game from the list
+                try:
+                    client.invitesSentTo.remove(sender_username)
+                except ValueError:
+                    print("{send_username} not found!")
+                
+                #test code
+                print("recipient:", client.username)
+                print("invites from:")
+                for op in client.invitesSentTo:
+                    print(op)
+
+                found = True
+                break
+        #sender for loop
+        for client in clients:
+            if client.username == sender_username:
+                #remove the other guy
+                try:
+                    client.invitesFrom.remove(recipient_username)
+                except ValueError:
+                    print("{send_username} not found!")
+
+                #test code
+                print("sender:", client.username)
+                print("invites sent to:")
+                for op in client.invitesFrom:
+                    print(op)
+
+                break
+
+        if found:
+            response = f"ACCEPT: {recipient.port}:{recipient.address}"
+            sock.sendto(response.encode(), client_address)
+        else:
+             sock.sendto(f"NO INFO: User {recipient_username} has not sent you an invite!".encode(), client_address)
 
         
     elif command == "shout":
