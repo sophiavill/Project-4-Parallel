@@ -14,7 +14,9 @@ IN_GAME = False
 
 currentMessage = ""
 
-expectedResonse = []
+#my idea has to have lists to store the following, but this could be better stored as client lists in central
+#pendingInvites = []
+#pendingResponse = []
 
 
 def receiveMessages(sock, message_queue):
@@ -30,8 +32,21 @@ def receiveMessages(sock, message_queue):
                 port = int(messageSplit[1])
                 address = messageSplit[2]
             
-                messageToSend = f"{currentMessage} \n Do you want to accept the game from {USERNAME}? (accept/decline): "
+                messageToSend = f"{currentMessage} \nDo you want to accept the game from {USERNAME}?\n(accept {USERNAME} or decline {USERNAME})"
+                #response = input("Accept the match? (accept/decline): ") 
                 sock.sendto(messageToSend.encode(), (address, port))
+                print("Invite sent. \n" + USERNAME + ">", end="")
+                
+            elif message.startswith("DECLINE"):
+                
+                messageSplit = message.split(":")
+                port = int(messageSplit[1])
+                address = messageSplit[2]
+            
+                messageToSend = f"{currentMessage}" 
+                sock.sendto(messageToSend.encode(), (address, port))
+                print("Invite sent. \n" + USERNAME + ">", end="")
+
             
 
             elif message.startswith("INFO"):
@@ -110,7 +125,13 @@ def tellCommand(recipient, sock, listen_port):
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
 def matchCommand(message, recipient, sock, listen_port):
-    message =f"match {recipient} {message} {listen_port}".encode()
+    #ensures server has the username of the recipient, message, lisitening port, and username of sender
+    #message =f"match {recipient} {message} {USERNAME}".encode()
+    message = f"match {recipient} {USERNAME}".encode()
+    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+
+def declineCommand(message, recipient, sock, listen_port):
+    message = f"decline {recipient} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     
 def exitCommand(sock, own_port):
@@ -123,7 +144,9 @@ def print_menu():
     print("  shout <msg>             # shout <msg> to every one online")
     print("  tell <name> <msg>       # tell user <name> message")
     print("  exit                    # quit the system")
-    print( "  match <name> <X|O> [t]  # Try to start a game")
+    print("  match <name>            # Try to start a game")
+    print("  accept <name>           # Accept an invite")
+    print("  decline <name>          # Decline an invite")
     print("  ?                       # print this message")
     print(USERNAME + "> ", end="")
 
@@ -161,7 +184,6 @@ def user_interface(sock, listen_port, message_queue):
             else:
                 print("Missing user or message")
                 print(USERNAME + "> ", end="")
-
             
 
         elif command == "exit":
@@ -173,52 +195,33 @@ def user_interface(sock, listen_port, message_queue):
             print_menu()
         
         elif command == "match":
-            # match <name> <b|w> [t]
             if len(commandSplit) >= 2:
                 player2 = commandSplit[1]
-                #Default faction is X unless specified otherwise
-                faction = 'X'
-                if len(commandSplit) >2 and commandSplit[2].upper() in ['X', 'O']:
-                    faction = commandSplit[2].upper()
+                message = f"match invite from:{USERNAME}:{socket.gethostbyname(socket.gethostname())}:{listen_port}"
+        
+        
+                matchCommand(message, player2, sock, listen_port)
+                currentMessage = message
                 
-                #set default play time
-                playTime = 600
-                if len(commandSplit) >= 4:
-                    try:
-                        #In case user specifies the time
-                        playTime = int(commandSplit[3])
-                    except ValueError:
-                        print("Invalid play time provided. Using default of 600 seconds.")
-                
-                #print("Player 2: " + player2 + ", Player faction: " + faction + ", Play time: " + str(playTime))
-                #reverses the color
-                if faction == 'X':
-                    faction = 'O'
-                else:
-                    faction = 'X'
-                #constructs the invite to be sent to the other guy
-                matchStr = USERNAME + " " + "invited you for a game!" + " " + "faction:" + " " + faction + " " + "time:" + " " + str(playTime)
-
-                #now calls a matchCommand to send this invite to the server to then send to player2
-                matchCommand(matchStr, player2, sock, listen_port)
-                currentMessage = matchStr
-
-
-                #need to also save what player1 expects, if we recieve it, then we in game mode and shit
-                
-                # ask the server if that user can play
-                # sever will send message asking "can you play"
-                # then the client will get the print out to match 
-                # we will have a pending list and active game object. only one active game
-                # check if in the pending, then go into gameplay
-                # connect to other user  
-              
             else:
-                print("Missing information")
+                print("Missing recipient username.")
                 print(USERNAME + "> ", end="")
 
-
-       
+        elif command == "decline":
+            if len(commandSplit) >= 2:
+                player2 = commandSplit[1]
+                message = f"{USERNAME} has decline your invite!"
+                
+                declineCommand(message, player2, sock, listen_port)
+                currentMessage = message
+            
+            else:
+                print("Missing recipient username.")
+                print(USERNAME + "> ", end="")
+    
+        #the accept command will be the exact same
+        #WITH the connection functionality and of course a different message
+                 
         else:
             print("Command not supported.")
             print(USERNAME + "> ", end="")

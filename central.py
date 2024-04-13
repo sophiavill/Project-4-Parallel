@@ -9,7 +9,9 @@ class Client:
         self.username = username
         self.address = address
         self.port = port
-        self.pendingOps = [] #experimental, may hold potential ops who have sent match requests
+        self.inGame = False
+        self.invitesSentTo = []
+        self.invitesFrom = []
 
 def clientMessage(message, client_address, sock):
     # gets the command/inoput from the client
@@ -63,18 +65,99 @@ def clientMessage(message, client_address, sock):
             sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
 
     elif command == "match":
-        recipient_username = messageSplit[1]
+        
+        recipient_username = messageSplit[1] #gets the username of the recipient
+        sender_username = messageSplit[2] #gets the username of the sender
+        print("should be sender username", sender_username)
         found = False
+        #recipient for loop
         for client in clients:
             if client.username == recipient_username:
                 recipient = client
+                #adds the name of the sender to client's invites from list
+                #ensures no duplicates
+                if sender_username not in client.invitesFrom:
+                    client.invitesFrom.append(sender_username) 
+                
+                #test code
+                print("recipient:", client.username)
+                print("invites from:")
+                for op in client.invitesFrom:
+                    print(op)
+
                 found = True
                 break
+        #sender for loop
+        for client in clients:
+            if client.username == sender_username:
+                #adds name of reciever to sendTo list
+                #ensures no duplicates
+                if recipient_username not in client.invitesSentTo:
+                    client.invitesSentTo.append(recipient_username)
+
+                #test code
+                print("sender:", client.username)
+                print("invites sent to:")
+                for op in client.invitesSentTo:
+                    print(op)            
+    
+                break
+
         if found:
             response = f"MATCH: {recipient.port}:{recipient.address}"
             sock.sendto(response.encode(), client_address)
         else:
             sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
+
+    elif command == "decline":
+        recipient_username = messageSplit[1] #gets the username of the recipient
+        sender_username = messageSplit[2] #gets the username of the sender
+        
+        #recipient for loop
+        for client in clients:
+            if client.username == recipient_username:
+                recipient = client
+                #remove the person you invited to a game from the list
+                try:
+                    client.invitesSentTo.remove(sender_username)
+                except ValueError:
+                    print("{send_username} not found!")
+                
+                #test code
+                print("recipient:", client.username)
+                print("invites from:")
+                for op in client.invitesSentTo:
+                    print(op)
+
+                found = True
+                break
+        #sender for loop
+        for client in clients:
+            if client.username == sender_username:
+                #remove the other guy
+                try:
+                    client.invitesFrom.remove(recipient_username)
+                except ValueError:
+                    print("{send_username} not found!")
+
+                
+
+                #test code
+                print("sender:", client.username)
+                print("invites sent to:")
+                for op in client.invitesFrom:
+                    print(op)
+
+                break
+
+        if found:
+            response = f"DECLINE: {recipient.port}:{recipient.address}"
+            sock.sendto(response.encode(), client_address)
+        else:
+            sock.sendto(f"NO INFO: User {recipient_username} has not sent you an invite!".encode(), client_address)
+
+        
+
         
     elif command == "shout":
         theList = "SHOUT\n"
