@@ -36,7 +36,8 @@ def clientMessage(message, client_address, sock):
         theList = ""
         for client in clients:
             num_users += 1
-            theList += f"{client.username}: address: {client.address}, port: {client.port}\n"
+            if client.inGame == False:
+                theList += f"{client.username}: address: {client.address}, port: {client.port}\n"
         # send completed list 
         message = "\nTotal " + str(num_users) + " users(s) online:\n"
         message += theList
@@ -205,6 +206,17 @@ def clientMessage(message, client_address, sock):
             response = f"ACCEPT: {recipient.port}:{recipient.address}"
             sock.sendto(response.encode(), client_address)
             #here, they should both have accepted the game, and the game should be starting soon
+            #connection
+            senderSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            senderSocket.connect((senderAddress, senderPort))
+            senderSocket.send(f"connect {recipientAddress} {recipientPort}".encode())
+            senderSocket.close()
+
+            recipientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            recipientSocket.connect((recipientAddress, recipientPort))
+            recipientSocket.send(f"connect {senderAddress} {senderPort}".encode())
+            recipientSocket.close()
+        
             
             
         else:

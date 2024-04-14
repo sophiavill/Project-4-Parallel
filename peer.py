@@ -252,7 +252,39 @@ def user_interface(sock, listen_port, message_queue):
             print("Command not supported.")
             print(USERNAME + "> ", end="")
 
+#Experimental functionality
+#allows peer to listen to other peers (I hope)
+def tcpServer(listen_port):
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('0.0.0.0', listen_port))
+    server_socket.listen()
+    print("This Peer is listening on port", listen_port)
+
+    while True:
+        client_socket, addr = server_socket.accept()
+        print(f"Accepted connection from {addr}")
+        threading.Thread(target=handlePeer, args=(client_socket,)).start()
+
+#handle peer comms
+def handlePeer(client_socket):
+    with client_socket:
+        try:
+            while True:
+                data = client_socket.recv(1024)
+                if not data:
+                    break
+                print("Received:", data.decode())
+        except Exception as e:
+            print("Peer handling error:", e)
+
+
 def main(listen_port):
+
+    #TCP setup - should allow for peer to peer comms
+    threading.Thread(target=tcpServer, args=(listen_port,), daemon=True).start()
+
+    #UDP code - peer to central
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", listen_port))
 
