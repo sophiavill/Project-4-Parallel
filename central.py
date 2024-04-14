@@ -159,6 +159,12 @@ def clientMessage(message, client_address, sock):
     elif command == "accept":
         recipient_username = messageSplit[1] #gets the username of the recipient
         sender_username = messageSplit[2] #gets the username of the sender
+        #stores important connection info
+        #thinking about having the server be the linker
+        recipientAddress = -1
+        recipientPort = -1
+        senderAddress = -1
+        senderPort = -1
         
         #recipient for loop
         for client in clients:
@@ -169,14 +175,14 @@ def clientMessage(message, client_address, sock):
                     client.invitesSentTo.remove(sender_username)
                 except ValueError:
                     print("{send_username} not found!")
-                
-                #test code
-                print("recipient:", client.username)
-                print("invites from:")
-                for op in client.invitesSentTo:
-                    print(op)
-
+            
                 found = True
+                #set their in game status to true
+                client.inGame = True
+                #set addresses and ports
+                recipientAddress = client.address
+                recipientPort = client.port
+                
                 break
         #sender for loop
         for client in clients:
@@ -186,18 +192,21 @@ def clientMessage(message, client_address, sock):
                     client.invitesFrom.remove(recipient_username)
                 except ValueError:
                     print("{send_username} not found!")
-
-                #test code
-                print("sender:", client.username)
-                print("invites sent to:")
-                for op in client.invitesFrom:
-                    print(op)
+                
+                #set their in game status to true
+                client.inGame =True
+                #set addresses and ports
+                senderAddress = client.address
+                senderPort = client.port
 
                 break
 
         if found:
             response = f"ACCEPT: {recipient.port}:{recipient.address}"
             sock.sendto(response.encode(), client_address)
+            #here, they should both have accepted the game, and the game should be starting soon
+            
+            
         else:
              sock.sendto(f"NO INFO: User {recipient_username} has not sent you an invite!".encode(), client_address)
 
