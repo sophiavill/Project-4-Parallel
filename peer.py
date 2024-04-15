@@ -274,6 +274,7 @@ def handlePeer(client_socket):
                 data = client_socket.recv(1024)
                 if not data:
                     break
+                recievedMsg = data.decode()
                 print("Received:", data.decode())
         except Exception as e:
             print("Peer handling error:", e)
