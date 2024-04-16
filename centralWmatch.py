@@ -36,8 +36,12 @@ def clientMessage(message, client_address, sock):
         theList = ""
         for client in clients:
             num_users += 1
-            if client.inGame == False:
-                theList += f"{client.username}: address: {client.address}, port: {client.port}\n"
+            if client.inGame == True:
+                status = "in game"
+            else:
+                status = "available"
+
+            theList += f"{client.username} - {status}\n"
         # send completed list 
         message = "\nTotal " + str(num_users) + " users(s) online:\n"
         message += theList
@@ -71,23 +75,28 @@ def clientMessage(message, client_address, sock):
         sender_username = messageSplit[2] #gets the username of the sender
         print("should be sender username", sender_username)
         found = False
+        playing = False
         #recipient for loop
         for client in clients:
             if client.username == recipient_username:
-                recipient = client
-                #adds the name of the sender to client's invites from list
-                #ensures no duplicates
-                if sender_username not in client.invitesFrom:
-                    client.invitesFrom.append(sender_username) 
-                
-                #test code
-                print("recipient:", client.username)
-                print("invites from:")
-                for op in client.invitesFrom:
-                    print(op)
+                if(client.inGame == True):
+                    playing = True
+                    break
+                elif(client.inGame == False):
+                    recipient = client
+                    #adds the name of the sender to client's invites from list
+                    #ensures no duplicates
+                    if sender_username not in client.invitesFrom:
+                        client.invitesFrom.append(sender_username) 
+                    
+                    #test code
+                    print("recipient:", client.username)
+                    print("invites from:")
+                    for op in client.invitesFrom:
+                        print(op)
 
-                found = True
-                break
+                    found = True
+                    break
         #sender for loop
         for client in clients:
             if client.username == sender_username:
@@ -108,7 +117,10 @@ def clientMessage(message, client_address, sock):
             response = f"MATCH: {recipient.port}:{recipient.address}"
             sock.sendto(response.encode(), client_address)
         else:
-            sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
+            if(playing):
+                sock.sendto(f"NO INFO: User {recipient_username} is in a game!".encode(), client_address)
+            else:
+                sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
 
     elif command == "decline":
         recipient_username = messageSplit[1] #gets the username of the recipient
@@ -204,10 +216,10 @@ def clientMessage(message, client_address, sock):
 
         if found:
             # send to sender 
-            response = f"ACCEPT: {recipient.port}:{recipient.address}"
+            response = f"ACCEPT: {recipient.port}:{recipient.address}:{recipient.username}"
             sock.sendto(response.encode(), client_address)
             # send to reciever own info
-            response = f"SERVER: {recipient.port}:{recipient.address}"
+            response = f"SERVER: {recipient.port}:{recipient.address}:{client.username}"
             sock.sendto(response.encode(), (recipient.address, recipient.port))
         
         else:
@@ -220,7 +232,17 @@ def clientMessage(message, client_address, sock):
             theList += f"{client.address}-{client.port}\n"
         # send completed list 
         sock.sendto(theList.encode(), client_address)
-        
+
+    elif command == "GAMEOVER":
+        user1 = messageSplit[1]
+        user2 = messageSplit[2]
+        print("user 1 is: ", user1)
+        print("user 2 is: ", user2)
+        for client in clients:
+            print(client.username)
+            if(client.username == user1 or client.username == user2):
+                client.inGame = False
+     
 
 def main():
     # make the socket
