@@ -431,7 +431,8 @@ def user_interface(sock, listen_port, message_queue):
     while True:
         allCommand = input()
         commandSplit = allCommand.split()
-        command = commandSplit[0]
+        if commandSplit:
+            command = commandSplit[0]
 
 # in game functions
 #--------------------------------------------------------------------------------------------------------------------------------------
