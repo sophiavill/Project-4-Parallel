@@ -121,6 +121,27 @@ def play_tic_tac_toe():
 
 
 #----------------------------------------------------------------------------------------------------------------
+def exitFuncServer(source):
+    SOC_LIST.remove(source)
+    source.close()
+    SERVER_SOCKET.close()
+    global IN_GAME, IS_SERVER
+    IN_GAME = False
+    IS_SERVER = False
+    print(f"Welcome back to the game server!")
+
+    print_client_side('GAMEOVER')
+
+    #tell the game server
+    message = f"GAMEOVER {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
+    SOCK.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+    # get back into the server thread
+    IN_GAME = False
+    IS_SERVER = False
+    message_queue = queue.Queue()
+    threading.Thread(target=receiveMessages, args=(SOCK, message_queue), daemon=True).start()
+    user_interface(SOCK, listen_port, message_queue)
+    SOCK.close()
 
 # get message from serevr
 def receiveMessages(sock, message_queue):
@@ -128,6 +149,7 @@ def receiveMessages(sock, message_queue):
     global USERNAME
     while True:
         try:
+            
             message, _ = sock.recvfrom(4096) 
             message = message.decode()
             
@@ -217,17 +239,15 @@ def receiveMessages(sock, message_queue):
                         READABLE = readable
                         for source in readable:
                             if source == server_socket:
+                                # Handle the server socket
                                 client_socket, client_address = server_socket.accept()
+                                print(f"Connected by {client_address}")
                                 sockets_list.append(client_socket)
+        
                                 if(printedBool == False):
-                                    global CURRENT_GAME
-                                    
                                     current_game = Game()
-                                    CURRENT_GAME = current_game
 
                                     print("\nSuccess! Game started with:", other_player_name)
-                                    print_game_menu(1)
-
                                     message = "Game pices have been randomly assigned: \n"
                                     message += "X will go first.\n\n"
                                     factions = ['X', 'O']
@@ -240,55 +260,30 @@ def receiveMessages(sock, message_queue):
 
                                     print_client_side(message)
                                     print(message)
-                                    
+
                                     print_board(current_game, "server")
-                                    # print("printing heree 8888 " + USERNAME + "> ", end="")
-
+                                    print(f"{USERNAME}>")
                                     print_board(current_game, "client")
-                                    
+
                                     printedBool = True
+                                    global CURRENT_GAME
+                                    CURRENT_GAME = current_game
                             else:
-                                # looking at client INPUT SERVER side
+                                # Handle client socket
                                 data = source.recv(1024)
-                                clean_data = data.decode().strip() 
+                                clean_data = data.decode().strip()
+
+                                commandSplit = clean_data.split()
+                                if commandSplit:
+                                    command = commandSplit[0]
+                                else:
+                                    command = " "
                                 
-                                for move in current_game.valid_moves:
-                                        if move == clean_data:
-                                            print("This is a game move")
-                                            # this is a game move. we need to see if it is this players turn
+                                if data:
+                                    print(f"Received from username: {clean_data}")
 
-                                # if clean_data != "exit":
-                                #     # rn just echo
-                                #     print(clean_data + "\n" + USERNAME + "> ", end="")
-                                #     source.sendall(data)
-                                #     for move in current_game.valid_moves:
-                                #         if move == clean_data:
-                                #             print("This is a game move")
-                                if clean_data == "exit":
-                                    # Remove client from the list and close the socket if connection is lost
-                                    # send to client 
-                                    #print_client_side("EXITING")
-                                    print("Trying to exit rn in here")
-                                    
-                                    sockets_list.remove(source)
-                                    source.close()
-                                    server_socket.close()
-                                    IN_GAME = False
-                                    IS_SERVER = False
-                                    print(f"Welcome back to the game server!")
-                                    # tell the other user 
-                                    print_client_side('GAMEOVER')
-
-                                    #tell the game server
-                                    message = f"GAMEOVER {current_game.player1_name} {current_game.player2_name}".encode()
-                                    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-                                    # get back into the server thread
-                                    IN_GAME = False
-                                    IS_SERVER = False
-                                    message_queue = queue.Queue()
-                                    threading.Thread(target=receiveMessages, args=(SOCK, message_queue), daemon=True).start()
-                                    user_interface(SOCK, listen_port, message_queue)
-                                    SOCK.close()
+                                    if(command == "exit"):
+                                        exitFuncServer(source)
 
                 except KeyboardInterrupt:
                     # Close all sockets
@@ -397,8 +392,10 @@ def acceptCommand(message, recipient, sock, listen_port):
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     
 def exitCommand(sock, own_port):
+    print("EXIT FROM CENT SERVER 123")
     message = f"exit {own_port} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+    sys.exit()
 
 def print_menu():
     print("\nMenu:")
@@ -440,64 +437,87 @@ def user_interface(sock, listen_port, message_queue):
 #--------------------------------------------------------------------------------------------------------------------------------------
         global IN_GAME
         global IS_SERVER
+
         if(IN_GAME == True):
-            
-            # looking at client INPUT client side
             if(IS_CLIENT == True):
-                if(command == "?"):
+                message = allCommand
+                # CLIENT_SOCKET.sendall(message.encode())
+
+                if command == "tell":
+                    message = f"\n{USERNAME}: {' '.join(commandSplit[1:])}"
+                    CLIENT_SOCKET.sendall(message.encode())
+                elif(command == "?"):
                     print_game_menu(2)
-                elif(command == "tell"):
-                    if len(commandSplit) >= 2:
-                        message = f"{USERNAME}: {' '.join(commandSplit[1:])}"
-                        CLIENT_SOCKET.sendall(message.encode())
-                    else:
-                        print("Missing message.")
+                elif(command == "exit"):
+                    CLIENT_SOCKET.sendall(command.encode())
                 else:
                     print("Comand not supported. ")
-                
-                print(USERNAME + "> ", end="", flush=True)
-                    # CLIENT_SOCKET.sendall(allCommand.encode())
-                    # print(USERNAME + "> ", end="")
-
-
-            # looking at server INPUT      
-            elif(IS_SERVER == True):
-                # looking at server input
-                print_client_side(allCommand)
-                
-                if(command == "?"):
+            
+                    
+            if(IS_SERVER == True):
+                if(command == "tell"):
+                    message = f"\n{USERNAME}: {' '.join(commandSplit[1:])}"
+                    print_client_side(message)
+                elif(command == "?"):
                     print_game_menu(2)
-                elif(command == "tell"):
-                    if len(commandSplit) >= 2:
-                        message = f"{USERNAME}: {' '.join(commandSplit[1:])}"
-                        print_client_side(message)
-                    else:
-                        print("Missing message.")
                 elif(command == "exit"):
                     for source in READABLE:
-                         if source != SERVER_SOCKET:
-                            SOC_LIST.remove(source)
-                            source.close()
-                            SERVER_SOCKET.close()
-                            IN_GAME = False
-                            IS_SERVER = False
-                            print(f"Welcome back to the game server!")
+                        exitFuncServer(source)
 
-                            print_client_side('GAMEOVER')
-                            #tell the game server
-                            message = f"GAMEOVER {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
-                            sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-                            # get back into the server thread
-                            IN_GAME = False
-                            IS_SERVER = False
-                            message_queue = queue.Queue()
-                            threading.Thread(target=receiveMessages, args=(SOCK, message_queue), daemon=True).start()
-                            user_interface(SOCK, listen_port, message_queue)
-                            SOCK.close()
                 else:
                     print("Comand not supported. ")
-                    # print(USERNAME + "> ", end="", flush=True)
-                print(USERNAME + "> ", end="", flush=True)
+
+        # global IN_GAME
+        # global IS_SERVER
+        # if(IN_GAME == True):
+            
+        #     # looking at client INPUT client side
+        #     if(IS_CLIENT == True):
+        #         CLIENT_SOCKET.sendall(comman.encode())
+
+        #         ]
+        #         # else:
+        #         #     print("hey in here Comand not supported. ")
+                
+        #         # print(USERNAME + "> ", end="", flush=True)
+        #         #     # CLIENT_SOCKET.sendall(allCommand.encode())
+        #         #     # print(USERNAME + "> ", end="")
+
+
+        #     # looking at server INPUT      
+        #     elif(IS_SERVER == True):
+        #         # looking at server input
+        #         print_client_side(allCommand)
+                
+              
+                # elif(command == "exit"):
+                #     print("HERE IN EXIT PART")
+                #     for source in READABLE:
+                #         print("HERE IN readbale PART")
+                        
+                #         # print("HERE IN this this PART")
+                #         SOC_LIST.remove(source)
+                #         source.close()
+                #         SERVER_SOCKET.close()
+                #         IN_GAME = False
+                #         IS_SERVER = False
+                #         print(f"Welcome back to the game server!")
+
+                #         print_client_side('GAMEOVER')
+                #         #tell the game server
+                #         message = f"GAMEOVER {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
+                #         sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+                #         # get back into the server thread
+                #         IN_GAME = False
+                #         IS_SERVER = False
+                #         message_queue = queue.Queue()
+                #         threading.Thread(target=receiveMessages, args=(SOCK, message_queue), daemon=True).start()
+                #         user_interface(SOCK, listen_port, message_queue)
+                #         SOCK.close()
+                # else:
+                #     print("Comand not supported. ")
+                #     # print(USERNAME + "> ", end="", flush=True)
+                # print(USERNAME + "> ", end="", flush=True)
 #--------------------------------------------------------------------------------------------------------------------------------------
 # regular server functions
                             
@@ -529,6 +549,7 @@ def user_interface(sock, listen_port, message_queue):
                 
 
             elif command == "exit":
+                print("EXIT FROM input side")
                 message_queue.put("exit")
                 exitCommand(sock, listen_port)
                 break
