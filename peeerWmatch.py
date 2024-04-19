@@ -60,10 +60,11 @@ def print_board(current_game, name):
         board_str += "\n"
 
     if(name == "server"):
-        print(board_str)
-        print(USERNAME + ">", end="")
+        # print(board_str)
+        print(board_str + USERNAME + ">")
     else:
         print_client_side(board_str)
+        
 
 def check_win(board, player):
    # rows
@@ -201,7 +202,7 @@ def receiveMessages(sock, message_queue):
                 if not sock:
                     raise Exception("Server is not accepting connections")
                 
-                print("Success! Game started with:", other_player_name)
+                print("\nSuccess! Game started with:", other_player_name)
                 print_game_menu(1)
                 # print board game 
 
@@ -241,18 +242,23 @@ def receiveMessages(sock, message_queue):
                             if source == server_socket:
                                 # Handle the server socket
                                 client_socket, client_address = server_socket.accept()
-                                print(f"Connected by {client_address}")
+                                # print(f"Connected by {client_address}")
                                 sockets_list.append(client_socket)
         
                                 if(printedBool == False):
                                     current_game = Game()
 
                                     print("\nSuccess! Game started with:", other_player_name)
+
+                                    # get the server the game menu
+                                    print_game_menu(1)
+
                                     message = "Game pices have been randomly assigned: \n"
                                     message += "X will go first.\n\n"
                                     factions = ['X', 'O']
                                     random.shuffle(factions)
                                     current_game.player1_faction, current_game.player2_faction = factions
+                                    
                                     current_game.player1_name = USERNAME
                                     current_game.player2_name = other_player_name
                                     message += f"Player 1 is {current_game.player1_name}: {current_game.player1_faction}\n"
@@ -262,7 +268,7 @@ def receiveMessages(sock, message_queue):
                                     print(message)
 
                                     print_board(current_game, "server")
-                                    print(f"{USERNAME}>")
+                                    
                                     print_board(current_game, "client")
 
                                     printedBool = True
@@ -280,10 +286,13 @@ def receiveMessages(sock, message_queue):
                                     command = " "
                                 
                                 if data:
-                                    print(f"Received from username: {clean_data}")
+                                    # print(f"Received from username: {clean_data}")
 
                                     if(command == "exit"):
                                         exitFuncServer(source)
+                                    else:
+                                        clean_send = clean_data + "\n" + USERNAME + "> "
+                                        print(clean_send, end="")
 
                 except KeyboardInterrupt:
                     # Close all sockets
@@ -329,6 +338,7 @@ def receiveMessages(sock, message_queue):
     
             else:
                 message_queue.put(f"\n{message}")
+                # print(USERNAME + "> ", end="")
 
         except Exception as e:
             message_queue.put(f"An error occurred: {e}")
@@ -392,10 +402,11 @@ def acceptCommand(message, recipient, sock, listen_port):
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     
 def exitCommand(sock, own_port):
-    print("EXIT FROM CENT SERVER 123")
+    message = f"exit {own_port} {USERNAME}"
     message = f"exit {own_port} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-    sys.exit()
+    print("May need to enter to confirm > ", end="")
+    sys.exit(0)
 
 def print_menu():
     print("\nMenu:")
@@ -446,26 +457,33 @@ def user_interface(sock, listen_port, message_queue):
                 if command == "tell":
                     message = f"\n{USERNAME}: {' '.join(commandSplit[1:])}"
                     CLIENT_SOCKET.sendall(message.encode())
+                    print(USERNAME + "> ", end="")
                 elif(command == "?"):
                     print_game_menu(2)
                 elif(command == "exit"):
                     CLIENT_SOCKET.sendall(command.encode())
+                #  elif to chec if valiud move, if it is: we will send to the server 
+                    # send to serervr
                 else:
-                    print("Comand not supported. ")
+                    toSend = "Command not supported.\n" + USERNAME + "> "
+                    print(toSend, end="")
             
                     
             if(IS_SERVER == True):
                 if(command == "tell"):
                     message = f"\n{USERNAME}: {' '.join(commandSplit[1:])}"
                     print_client_side(message)
+                    print(USERNAME + "> ", end="")
                 elif(command == "?"):
                     print_game_menu(2)
                 elif(command == "exit"):
                     for source in READABLE:
                         exitFuncServer(source)
 
+                # elif to chec if valiud move, check if my turn, do stuff based on that 
                 else:
-                    print("Comand not supported. ")
+                    toSend = "Command not supported.\n" + USERNAME + "> "
+                    print(toSend, end="")
 
         # global IN_GAME
         # global IS_SERVER
@@ -551,7 +569,7 @@ def user_interface(sock, listen_port, message_queue):
             elif command == "exit":
                 print("EXIT FROM input side")
                 message_queue.put("exit")
-                exitCommand(sock, listen_port)
+                exitCommand(SOCK, listen_port)
                 break
             
             elif command == "?":
@@ -599,8 +617,8 @@ def user_interface(sock, listen_port, message_queue):
             #WITH the connection functionality and of course a different message
                     
             else:
-                print("Command not supported.")
-                print(USERNAME + "> ", end="")
+                toSend = "Command not supported.\n" + USERNAME + "> "
+                print(toSend, end="")
 
 #Experimental functionality
 #allows peer to listen to other peers (I hope)

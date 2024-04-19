@@ -48,6 +48,7 @@ def clientMessage(message, client_address, sock):
         sock.sendto(message.encode(), client_address)
 
     elif command == "exit":
+        print("tryig to exit")
         port = int(messageSplit[1])
         username = messageSplit[2]
         # remove from list to exit
@@ -178,6 +179,8 @@ def clientMessage(message, client_address, sock):
         recipientPort = -1
         senderAddress = -1
         senderPort = -1
+        found = False
+        error = False
         
         #recipient for loop
         for client in clients:
@@ -187,32 +190,35 @@ def clientMessage(message, client_address, sock):
                 try:
                     client.invitesSentTo.remove(sender_username)
                 except ValueError:
-                    print("{send_username} not found!")
+                    print(f"{sender_username} not found!")
+                    error = True
             
-                found = True
-                #set their in game status to true
-                client.inGame = True
-                #set addresses and ports
-                recipientAddress = client.address
-                recipientPort = client.port
+                if(error == False):
+                    found = True
+                    #set their in game status to true
+                    client.inGame = True
+                    #set addresses and ports
+                    recipientAddress = client.address
+                    recipientPort = client.port
                 
                 break
-        #sender for loop
-        for client in clients:
-            if client.username == sender_username:
-                #remove the other guy
-                try:
-                    client.invitesFrom.remove(recipient_username)
-                except ValueError:
-                    print("{send_username} not found!")
-                
-                #set their in game status to true
-                client.inGame =True
-                #set addresses and ports
-                senderAddress = client.address
-                senderPort = client.port
+        if(error == False):
+            #sender for loop
+            for client in clients:
+                if client.username == sender_username:
+                    #remove the other guy
+                    try:
+                        client.invitesFrom.remove(recipient_username)
+                    except ValueError:
+                        print(f"{sender_username} not found!")
+                    
+                    #set their in game status to true
+                    client.inGame =True
+                    #set addresses and ports
+                    senderAddress = client.address
+                    senderPort = client.port
 
-                break
+                    break
 
         if found:
             # send to sender 
