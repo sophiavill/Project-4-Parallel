@@ -17,7 +17,7 @@ def clientMessage(message, client_address, sock):
     # gets the command/inoput from the client
     messageSplit = message.decode().split()
     command = messageSplit[0]
-    print("Command is:", command)
+    # print("Command is:", command)
 
     if command == "register":
         # separate command 
@@ -73,7 +73,7 @@ def clientMessage(message, client_address, sock):
         
         recipient_username = messageSplit[1] #gets the username of the recipient
         sender_username = messageSplit[2] #gets the username of the sender
-        print("should be sender username", sender_username)
+        # print("should be sender username", sender_username)
         found = False
         playing = False
         #recipient for loop
@@ -90,10 +90,10 @@ def clientMessage(message, client_address, sock):
                         client.invitesFrom.append(sender_username) 
                     
                     #test code
-                    print("recipient:", client.username)
-                    print("invites from:")
-                    for op in client.invitesFrom:
-                        print(op)
+                    # print("recipient:", client.username)
+                    # print("invites from:")
+                    # for op in client.invitesFrom:
+                    #     print(op)
 
                     found = True
                     break
@@ -155,11 +155,11 @@ def clientMessage(message, client_address, sock):
 
                 
 
-                #test code
-                print("sender:", client.username)
-                print("invites sent to:")
-                for op in client.invitesFrom:
-                    print(op)
+                # #test code
+                # print("sender:", client.username)
+                # print("invites sent to:")
+                # for op in client.invitesFrom:
+                #     print(op)
 
                 break
 
@@ -225,7 +225,6 @@ def clientMessage(message, client_address, sock):
         else:
              sock.sendto(f"NO INFO: User {recipient_username} has not sent you an invite!".encode(), client_address)
 
-        
     elif command == "shout":
         theList = "SHOUT\n"
         for client in clients:
@@ -236,10 +235,10 @@ def clientMessage(message, client_address, sock):
     elif command == "GAMEOVER":
         user1 = messageSplit[1]
         user2 = messageSplit[2]
-        print("user 1 is: ", user1)
-        print("user 2 is: ", user2)
+        # print("user 1 is: ", user1)
+        # print("user 2 is: ", user2)
         for client in clients:
-            print(client.username)
+            # print(client.username)
             if(client.username == user1 or client.username == user2):
                 client.inGame = False
      
