@@ -364,7 +364,6 @@ def receiveMessages(sock, message_queue):
                 print(messageParts[1] + "\n" + USERNAME + "> ", end="")
 
             elif message.startswith("SHOUT"):
-                print(message)
                 lines = message.split('\n')
                 for line in lines[1:]:
                     lineSplit = line.split('-')
