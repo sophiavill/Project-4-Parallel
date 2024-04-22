@@ -164,7 +164,7 @@ def exitFuncServer(source):
 
     #tell the game server
     if(CURRENT_GAME.draw):
-        message = f"DRAW {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
+        message = f"DRAW {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
     else:
         message = f"GAMEOVER {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
     SOCK.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
