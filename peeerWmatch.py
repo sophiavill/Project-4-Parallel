@@ -330,13 +330,16 @@ def receiveMessages(sock, message_queue):
 
                                     if(command == "exit"):
                                         exitFuncServer(source)
-                                    if command == "MOVE":
+                                    elif command == "MOVE":
                                         # check if their turn
                                         if(CURRENT_GAME.current_player != USERNAME):
                                             # gameplay(move, type, player_faction)
                                             gameplay(commandSplit[1], "client", CURRENT_GAME.player2_faction)
                                         else:
                                             print_client_side("It is not your turn!")
+                                    elif(command == "refresh"):
+                                        print_board(CURRENT_GAME, "client")
+                                    
 
                                     else:
                                         clean_send = clean_data + "\n" + USERNAME + "> "
@@ -494,14 +497,13 @@ def exitCommand(sock, own_port):
 
 def print_menu():
     print("\nMenu:")
-    print("  who                     # List all online users")
     print("  shout <msg>             # shout <msg> to every one online")
     print("  tell <name> <msg>       # tell user <name> message")
     print("  exit                    # quit the system")
     print("  match <name>            # Try to start a game")
     print("  accept <name>           # Accept an invite")
     print("  decline <name>          # Decline an invite")
-    print("  score                   # Print the scoreboard")
+    print("  score                   # Print the scoreboard and user availability")
     print("  ?                       # print this message")
     print(USERNAME + "> ", end="")
 
@@ -557,6 +559,8 @@ def user_interface(sock, listen_port, message_queue):
                 elif(command in valid_moves):
                     message = f"MOVE {command}"
                     CLIENT_SOCKET.sendall(message.encode())
+                elif(command == "refresh"):
+                    CLIENT_SOCKET.sendall(command.encode())
 
                 #  elif to chec if valiud move, if it is: we will send to the server 
                     # send to serervr
@@ -572,6 +576,8 @@ def user_interface(sock, listen_port, message_queue):
                     print(USERNAME + "> ", end="")
                 elif(command == "?"):
                     print_game_menu(2)
+                elif(command == "refresh"):
+                    print_board(CURRENT_GAME, "server")
                 elif(command == "exit"):
                     # all exiting has to happen inside server loop
                     print_client_side('EXIT_NOW')
