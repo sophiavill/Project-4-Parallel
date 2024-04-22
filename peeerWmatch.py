@@ -12,6 +12,9 @@ CENTRAL_SERVER_IP = '0.0.0.0'
 #CENTRAL_SERVER_IP = '128.186.120.158' 
 CENTRAL_SERVER_PORT = 8008
 
+EXIT_NOW = False
+
+
 USERNAME = ""
 IN_GAME = False
 IS_SERVER = False
@@ -32,11 +35,14 @@ class Game:
         self.board = self.init_board()
         self.player1_faction = " "
         self.player2_faction = " "
-        self.current_player = -1
+        self.current_player = ""
         self.is_active = False
         self.valid_moves = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
         self.played_moves = [False] * 9
         self.player_spot = [" "] * 9
+        self.winner = ""
+        self.loser = ""
+        self.draw = False
 
     def init_board(self):
         return [['.' for _ in range(3)] for _ in range(3)]
@@ -50,7 +56,8 @@ def print_client_side(message):
             sock.sendall(message.encode())
 
 def print_board(current_game, name):
-    board_str = f"{current_game.player1_name}: {current_game.player1_faction} \t\t {current_game.player2_name}: {current_game.player2_faction}\n"
+    board_str = f"\n\n{current_game.current_player}'s turn!"
+    board_str += f"\n{current_game.player1_name}: {current_game.player1_faction} \t\t {current_game.player2_name}: {current_game.player2_faction}\n"
     board_str += "\n    1  2  3\n"
     for i in range(3):
         row_label = chr(ord('A') + i)
@@ -61,10 +68,9 @@ def print_board(current_game, name):
 
     if(name == "server"):
         # print(board_str)
-        print(board_str + USERNAME + ">")
+        print(board_str + USERNAME + ">", end="")
     else:
         print_client_side(board_str)
-        
 
 def check_win(board, player):
    # rows
@@ -88,39 +94,58 @@ def check_draw(board):
                return False  # if any cell is empty, game is not a draw
    return True  # if all cells are filled and no winner, it's a draw
 
-def play_tic_tac_toe():
-   board = init_board()
-   current_player = '#'
+def gameplay(move, player_type, faction):
+    global CURRENT_GAME
 
-   while True:
-       print_board(board)
-       print("Player", current_player, "'s turn. Enter row and column (e.g., A1): ")
-       move = input().strip().upper()
+    row, col = move[0], int(move[1]) - 1
+    row_index = ord(row) - ord('A')
+    column_index = col
 
-       row, col = move[0], int(move[1]) - 1
+    if row_index < 0 or row_index >= 3 or column_index < 0 or column_index >= 3 or CURRENT_GAME.board[row_index][column_index] != '.':
+        if(player_type == "server"):
+            print("Invalid move. Try again. \n" + USERNAME + "> ", end="")
+        else:
+            errorMsg = "Invalid move. Try again."
+            print_client_side(errorMsg)
+        return
 
-       row_index = ord(row) - ord('A')
-       column_index = col
+    CURRENT_GAME.board[row_index][column_index] = faction
+    
+    if(player_type == "server"):
+        CURRENT_GAME.current_player = CURRENT_GAME.player2_name
+    else:
+        CURRENT_GAME.current_player = CURRENT_GAME.player1_name
 
-       if row_index < 0 or row_index >= 3 or column_index < 0 or column_index >= 3 or board[row_index][column_index] != '.':
-           print("Invalid move. Try again.")
-           continue
+    print_board(CURRENT_GAME, "server")
+    print_board(CURRENT_GAME, "client")
 
-       board[row_index][column_index] = current_player
+    if(check_win(CURRENT_GAME.board, faction)):
+        if(player_type == "server"):
+            message = "\nGame over! " + CURRENT_GAME.player1_name + " won and " + CURRENT_GAME.player2_name + " lost.\n"
+            CURRENT_GAME.winner = CURRENT_GAME.player1_name
+            CURRENT_GAME.loser = CURRENT_GAME.player2_name
+            print(message)
+            print_client_side(message)
+        else:
+            message = "\nGame over! " + CURRENT_GAME.player2_name + " won and " + CURRENT_GAME.player1_name + " lost.\n"
+            CURRENT_GAME.loser = CURRENT_GAME.player1_name
+            CURRENT_GAME.winner = CURRENT_GAME.player2_name
+            print(message)
+            print_client_side(message)
+        
+        print_client_side('EXIT_NOW')
+    
+    elif(check_draw(CURRENT_GAME.board)):
+        message = "Game over! Its a draw!\n"
+        print(message)
+        print_client_side(message)
+        CURRENT_GAME.draw = True
 
-       if check_win(board, current_player):
-           print_board(board)
-           print("Player", current_player, "wins!")
-           break
-
-       if check_draw(board):
-           print_board(board)
-           print("It's a draw!")
-           break
-
-       current_player = 'O' if current_player == '#' else '#'
+        print_client_side('EXIT_NOW')
 
 
+    
+    
 #----------------------------------------------------------------------------------------------------------------
 def exitFuncServer(source):
     SOC_LIST.remove(source)
@@ -131,10 +156,17 @@ def exitFuncServer(source):
     IS_SERVER = False
     print(f"Welcome back to the game server!")
 
+    # print("Active Threads:")
+    # for thread in threading.enumerate():
+    #     print(thread.name)
+
     print_client_side('GAMEOVER')
 
     #tell the game server
-    message = f"GAMEOVER {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
+    if(CURRENT_GAME.draw):
+        message = f"DRAW {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
+    else:
+        message = f"GAMEOVER {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
     SOCK.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     # get back into the server thread
     IN_GAME = False
@@ -222,6 +254,7 @@ def receiveMessages(sock, message_queue):
                 other_player_name = messageSplit[3]
                
                 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # enable address reuse
                 global SERVER_SOCKET
                 SERVER_SOCKET = server_socket
                 server_socket.bind((address, port))
@@ -264,6 +297,12 @@ def receiveMessages(sock, message_queue):
                                     message += f"Player 1 is {current_game.player1_name}: {current_game.player1_faction}\n"
                                     message += f"Player 2 is {current_game.player2_name}: {current_game.player2_faction}\n"
 
+                                    if (current_game.player1_faction == 'X'):
+                                        current_game.current_player = current_game.player1_name
+                                    else:
+                                        current_game.current_player = current_game.player2_name
+
+
                                     print_client_side(message)
                                     print(message)
 
@@ -290,6 +329,14 @@ def receiveMessages(sock, message_queue):
 
                                     if(command == "exit"):
                                         exitFuncServer(source)
+                                    if command == "MOVE":
+                                        # check if their turn
+                                        if(CURRENT_GAME.current_player != USERNAME):
+                                            # gameplay(move, type, player_faction)
+                                            gameplay(commandSplit[1], "client", CURRENT_GAME.player2_faction)
+                                        else:
+                                            print_client_side("It is not your turn!")
+
                                     else:
                                         clean_send = clean_data + "\n" + USERNAME + "> "
                                         print(clean_send, end="")
@@ -335,6 +382,10 @@ def receiveMessages(sock, message_queue):
                 threading.Thread(target=receiveMessages, args=(SOCK, message_queue), daemon=True).start()
                 user_interface(SOCK, listen_port, message_queue)
                 SOCK.close()
+            
+            elif message.startswith("EXIT_NOW"):
+                    command = "exit"
+                    CLIENT_SOCKET.sendall(command.encode())
     
             else:
                 message_queue.put(f"\n{message}")
@@ -358,13 +409,38 @@ def printMessage(message_queue):
 def serverRegister(sock, own_port):
     # send username + port to the server 
 
-    welcome = ("\n\n\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-           + "\t\t%                                         %\n"
-           + "\t\t%             Welcome to the P2P          %\n"
-           + "\t\t%         Online Tic-tac-toe Server       %\n"
-           + "\t\t%                                         %\n"
-           + "\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
-    print(welcome)
+    tic = r""" 
+       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+                                     ██████╗ ██████╗ ██████╗ 
+                                     ██╔══██╗╚════██╗██╔══██╗
+                                     ██████╔╝ █████╔╝██████╔╝
+                                     ██╔═══╝ ██╔═══╝ ██╔═══╝ 
+                                     ██║     ███████╗██║     
+                                     ╚═╝     ╚══════╝╚═╝     
+                        
+
+
+         ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗
+         ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝
+            ██║   ██║██║            ██║   ███████║██║            ██║   ██║   ██║█████╗  
+            ██║   ██║██║            ██║   ██╔══██║██║            ██║   ██║   ██║██╔══╝  
+            ██║   ██║╚██████╗       ██║   ██║  ██║╚██████╗       ██║   ╚██████╔╝███████╗
+            ╚═╝   ╚═╝ ╚═════╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝       ╚═╝    ╚═════╝ ╚══════╝
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        """
+                                                                                  
+
+    # welcome = ("\n\n\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+    #        + "\t\t%                                         %\n"
+    #        + "\t\t%             Welcome to the P2P          %\n"
+    #        + "\t\t%         Online Tic-tac-toe Server       %\n"
+    #        + "\t\t%                                         %\n"
+    #        + "\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
+    print("\n\n\t\t" + tic + "\n")
 
     username = input("> Enter your username: ")
     
@@ -378,6 +454,11 @@ def whoCommand(sock):
     # get users from server
     message = "who".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+
+def scoreCommand(sock):
+    message = "score".encode()
+    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+
 
 def shoutCommand(sock):
     message = "shout".encode()
@@ -406,7 +487,12 @@ def exitCommand(sock, own_port):
     message = f"exit {own_port} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     print("May need to enter to confirm > ", end="")
-    sys.exit(0)
+
+    global EXIT_NOW
+    EXIT_NOW = True
+    while EXIT_NOW:
+        print("HERE")
+        sys.exit(0)
 
 def print_menu():
     print("\nMenu:")
@@ -417,6 +503,7 @@ def print_menu():
     print("  match <name>            # Try to start a game")
     print("  accept <name>           # Accept an invite")
     print("  decline <name>          # Decline an invite")
+    print("  score                   # Print the scoreboard")
     print("  ?                       # print this message")
     print(USERNAME + "> ", end="")
 
@@ -437,6 +524,11 @@ def user_interface(sock, listen_port, message_queue):
     print_menu()
     
     while True:
+        # print("Active Threads:")
+        # for thread in threading.enumerate():
+        #     print(thread.name)
+
+ 
         allCommand = input()
         commandSplit = allCommand.split()
         if commandSplit:
@@ -450,6 +542,8 @@ def user_interface(sock, listen_port, message_queue):
         global IS_SERVER
 
         if(IN_GAME == True):
+            valid_moves = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
+
             if(IS_CLIENT == True):
                 message = allCommand
                 # CLIENT_SOCKET.sendall(message.encode())
@@ -462,6 +556,10 @@ def user_interface(sock, listen_port, message_queue):
                     print_game_menu(2)
                 elif(command == "exit"):
                     CLIENT_SOCKET.sendall(command.encode())
+                elif(command in valid_moves):
+                    message = f"MOVE {command}"
+                    CLIENT_SOCKET.sendall(message.encode())
+
                 #  elif to chec if valiud move, if it is: we will send to the server 
                     # send to serervr
                 else:
@@ -477,71 +575,29 @@ def user_interface(sock, listen_port, message_queue):
                 elif(command == "?"):
                     print_game_menu(2)
                 elif(command == "exit"):
-                    for source in READABLE:
-                        exitFuncServer(source)
+                    # all exiting has to happen inside server loop
+                    print_client_side('EXIT_NOW')
+                elif(command in valid_moves):
+                    # check if my turn, do stuff based on that
+                    if(CURRENT_GAME.current_player == USERNAME):
+                        gameplay(command, "server", CURRENT_GAME.player1_faction)
+                            
+                    else:
+                        print("It is not your turn!\n" + USERNAME + "> ", end="")
 
-                # elif to chec if valiud move, check if my turn, do stuff based on that 
+                    
                 else:
                     toSend = "Command not supported.\n" + USERNAME + "> "
                     print(toSend, end="")
 
-        # global IN_GAME
-        # global IS_SERVER
-        # if(IN_GAME == True):
-            
-        #     # looking at client INPUT client side
-        #     if(IS_CLIENT == True):
-        #         CLIENT_SOCKET.sendall(comman.encode())
-
-        #         ]
-        #         # else:
-        #         #     print("hey in here Comand not supported. ")
-                
-        #         # print(USERNAME + "> ", end="", flush=True)
-        #         #     # CLIENT_SOCKET.sendall(allCommand.encode())
-        #         #     # print(USERNAME + "> ", end="")
-
-
-        #     # looking at server INPUT      
-        #     elif(IS_SERVER == True):
-        #         # looking at server input
-        #         print_client_side(allCommand)
-                
-              
-                # elif(command == "exit"):
-                #     print("HERE IN EXIT PART")
-                #     for source in READABLE:
-                #         print("HERE IN readbale PART")
-                        
-                #         # print("HERE IN this this PART")
-                #         SOC_LIST.remove(source)
-                #         source.close()
-                #         SERVER_SOCKET.close()
-                #         IN_GAME = False
-                #         IS_SERVER = False
-                #         print(f"Welcome back to the game server!")
-
-                #         print_client_side('GAMEOVER')
-                #         #tell the game server
-                #         message = f"GAMEOVER {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
-                #         sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-                #         # get back into the server thread
-                #         IN_GAME = False
-                #         IS_SERVER = False
-                #         message_queue = queue.Queue()
-                #         threading.Thread(target=receiveMessages, args=(SOCK, message_queue), daemon=True).start()
-                #         user_interface(SOCK, listen_port, message_queue)
-                #         SOCK.close()
-                # else:
-                #     print("Comand not supported. ")
-                #     # print(USERNAME + "> ", end="", flush=True)
-                # print(USERNAME + "> ", end="", flush=True)
 #--------------------------------------------------------------------------------------------------------------------------------------
 # regular server functions
                             
         else:
             if command == "who":
                 whoCommand(sock)
+            elif command == "score":
+                scoreCommand(sock)
 
             elif command == "shout":
                 if len(commandSplit) >= 2:

@@ -3,6 +3,8 @@ import socket
 CENTRAL_SERVER_IP = '0.0.0.0'  # Listen on all available interfaces
 CENTRAL_SERVER_PORT = 8008  # Port to listen on
 
+STATS_LIST = {}
+
 
 class Client:
     def __init__(self, username, address, port):
@@ -12,6 +14,29 @@ class Client:
         self.inGame = False
         self.invitesSentTo = []
         self.invitesFrom = []
+
+
+def print_score_board(sock, client_address):
+    sorted_players = sorted(STATS_LIST.items(), key=lambda x: x[1], reverse=True)
+    message = r""" 
+
+
+███████╗ ██████╗ ██████╗ ██████╗ ███████╗    ██████╗  ██████╗  █████╗ ██████╗ ██████╗ 
+██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔══██╗██╔═══██╗██╔══██╗██╔══██╗██╔══██╗
+███████╗██║     ██║   ██║██████╔╝█████╗      ██████╔╝██║   ██║███████║██████╔╝██║  ██║
+╚════██║██║     ██║   ██║██╔══██╗██╔══╝      ██╔══██╗██║   ██║██╔══██║██╔══██╗██║  ██║
+███████║╚██████╗╚██████╔╝██║  ██║███████╗    ██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
+╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                                                                                                                                                                                                                        
+                                                                                                                               
+"""
+     
+    for player, score in sorted_players:
+        message += f"{player}: {score}\n"
+    
+    sock.sendto(message.encode(), client_address)
+
+
 
 def clientMessage(message, client_address, sock):
     # gets the command/inoput from the client
@@ -70,6 +95,9 @@ def clientMessage(message, client_address, sock):
         else:
             sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
 
+    elif command == "score":
+        print_score_board(sock, client_address)
+    
     elif command == "match":
         
         recipient_username = messageSplit[1] #gets the username of the recipient
@@ -238,15 +266,31 @@ def clientMessage(message, client_address, sock):
         # send completed list 
         sock.sendto(theList.encode(), client_address)
 
-    elif command == "GAMEOVER":
+    elif command == "DRAW":
         user1 = messageSplit[1]
         user2 = messageSplit[2]
-        # print("user 1 is: ", user1)
-        # print("user 2 is: ", user2)
+
         for client in clients:
-            # print(client.username)
             if(client.username == user1 or client.username == user2):
                 client.inGame = False
+        
+    elif command == "GAMEOVER":
+        global STATS_LIST
+        winner = messageSplit[1]
+        loser = messageSplit[2]
+
+        for client in clients:
+            if(client.username == winner or client.username == loser):
+                client.inGame = False
+        
+        if winner in STATS_LIST:
+            STATS_LIST[winner] += 100  # Add points to existing player's score
+        else:
+            STATS_LIST[winner] = 100
+
+        if loser not in STATS_LIST:
+            STATS_LIST[loser] = 0
+        
      
 
 def main():
