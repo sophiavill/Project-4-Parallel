@@ -16,23 +16,27 @@ class Client:
         self.invitesFrom = []
 
 
-def print_score_board(sock, client_address):
+def print_score_board(sock, client_address, added_message):
     sorted_players = sorted(STATS_LIST.items(), key=lambda x: x[1], reverse=True)
-    message = r""" 
+    message = "Scoreboard: \n"
+#     message = r""" 
 
 
-███████╗ ██████╗ ██████╗ ██████╗ ███████╗    ██████╗  ██████╗  █████╗ ██████╗ ██████╗ 
-██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔══██╗██╔═══██╗██╔══██╗██╔══██╗██╔══██╗
-███████╗██║     ██║   ██║██████╔╝█████╗      ██████╔╝██║   ██║███████║██████╔╝██║  ██║
-╚════██║██║     ██║   ██║██╔══██╗██╔══╝      ██╔══██╗██║   ██║██╔══██║██╔══██╗██║  ██║
-███████║╚██████╗╚██████╔╝██║  ██║███████╗    ██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
-╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                                                                                                                                                                                                                        
+# ███████╗ ██████╗ ██████╗ ██████╗ ███████╗    ██████╗  ██████╗  █████╗ ██████╗ ██████╗ 
+# ██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝    ██╔══██╗██╔═══██╗██╔══██╗██╔══██╗██╔══██╗
+# ███████╗██║     ██║   ██║██████╔╝█████╗      ██████╔╝██║   ██║███████║██████╔╝██║  ██║
+# ╚════██║██║     ██║   ██║██╔══██╗██╔══╝      ██╔══██╗██║   ██║██╔══██║██╔══██╗██║  ██║
+# ███████║╚██████╗╚██████╔╝██║  ██║███████╗    ██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
+# ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ 
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                                                                                                                                                                                                                        
                                                                                                                                
-"""
+# """
      
     for player, score in sorted_players:
         message += f"{player}: {score}\n"
+
+    
+    message += "\n" + added_message
     
     sock.sendto(message.encode(), client_address)
 
@@ -56,21 +60,21 @@ def clientMessage(message, client_address, sock):
         clients.append(newClient)
         print(f"Registered: {client_address[0]}:{port}")
 
-    elif command == "who":
-        num_users = 0
-        theList = ""
-        for client in clients:
-            num_users += 1
-            if client.inGame == True:
-                status = "in game"
-            else:
-                status = "available"
+    # elif command == "who":
+    #     num_users = 0
+    #     theList = ""
+    #     for client in clients:
+    #         num_users += 1
+    #         if client.inGame == True:
+    #             status = "in game"
+    #         else:
+    #             status = "available"
 
-            theList += f"{client.username} - {status}\n"
-        # send completed list 
-        message = "\nTotal " + str(num_users) + " users(s) online:\n"
-        message += theList
-        sock.sendto(message.encode(), client_address)
+    #         theList += f"{client.username} - {status}\n"
+    #     # send completed list 
+    #     message = "\nTotal " + str(num_users) + " users(s) online:\n"
+    #     message += theList
+    #     sock.sendto(message.encode(), client_address)
 
     elif command == "exit":
         print("tryig to exit")
@@ -96,7 +100,24 @@ def clientMessage(message, client_address, sock):
             sock.sendto(f"NO INFO: User {recipient_username} is not online!".encode(), client_address)
 
     elif command == "score":
-        print_score_board(sock, client_address)
+
+        num_users = 0
+        theList = ""
+        for client in clients:
+            num_users += 1
+            if client.inGame == True:
+                status = "in game"
+            else:
+                status = "available"
+
+            theList += f"{client.username} - {status}\n"
+        # send completed list 
+        message = "\nTotal " + str(num_users) + " users(s) online:\n"
+        message += theList
+        # sock.sendto(message.encode(), client_address)
+
+
+        print_score_board(sock, client_address, message)
     
     elif command == "match":
         
@@ -117,12 +138,6 @@ def clientMessage(message, client_address, sock):
                     #ensures no duplicates
                     if sender_username not in client.invitesFrom:
                         client.invitesFrom.append(sender_username) 
-                    
-                    #test code
-                    # print("recipient:", client.username)
-                    # print("invites from:")
-                    # for op in client.invitesFrom:
-                    #     print(op)
 
                     found = True
                     break
@@ -154,6 +169,8 @@ def clientMessage(message, client_address, sock):
     elif command == "decline":
         recipient_username = messageSplit[1] #gets the username of the recipient
         sender_username = messageSplit[2] #gets the username of the sender
+        found = False
+        error = False
         
         #recipient for loop
         for client in clients:
@@ -163,34 +180,24 @@ def clientMessage(message, client_address, sock):
                 try:
                     client.invitesSentTo.remove(sender_username)
                 except ValueError:
-                    print("{send_username} not found!")
+                    print(f"{sender_username} not found!")
+                    error = True
                 
-                #test code
-                print("recipient:", client.username)
-                print("invites from:")
-                for op in client.invitesSentTo:
-                    print(op)
+                if(error == False):
+                    found = True
 
-                found = True
                 break
         #sender for loop
-        for client in clients:
-            if client.username == sender_username:
-                #remove the other guy
-                try:
-                    client.invitesFrom.remove(recipient_username)
-                except ValueError:
-                    print("{send_username} not found!")
+        if(error == False):
+            for client in clients:
+                if client.username == sender_username:
+                    #remove the other guy
+                    try:
+                        client.invitesFrom.remove(recipient_username)
+                    except ValueError:
+                        print("{sender_username} not found!")
 
-                
-
-                # #test code
-                # print("sender:", client.username)
-                # print("invites sent to:")
-                # for op in client.invitesFrom:
-                #     print(op)
-
-                break
+                    break
 
         if found:
             response = f"DECLINE: {recipient.port}:{recipient.address}"

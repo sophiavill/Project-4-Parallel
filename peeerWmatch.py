@@ -56,7 +56,8 @@ def print_client_side(message):
             sock.sendall(message.encode())
 
 def print_board(current_game, name):
-    board_str = f"\n\n{current_game.current_player}'s turn!"
+    board_str = "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+    board_str += f"\n\n{current_game.current_player}'s turn!"
     board_str += f"\n{current_game.player1_name}: {current_game.player1_faction} \t\t {current_game.player2_name}: {current_game.player2_faction}\n"
     board_str += "\n    1  2  3\n"
     for i in range(3):
@@ -68,7 +69,7 @@ def print_board(current_game, name):
 
     if(name == "server"):
         # print(board_str)
-        print(board_str + USERNAME + ">", end="")
+        print(board_str + "\n"+ USERNAME + ">", end="")
     else:
         print_client_side(board_str)
 
@@ -192,7 +193,7 @@ def receiveMessages(sock, message_queue):
                 port = int(messageSplit[1])
                 address = messageSplit[2]
             
-                messageToSend = f"{currentMessage} \nDo you want to accept the game from {USERNAME}?\n(accept {USERNAME} or decline {USERNAME})"
+                messageToSend = f"\nDo you want to accept the game from {USERNAME}?\n(accept {USERNAME} or decline {USERNAME})"
                 #response = input("Accept the match? (accept/decline): ") 
                 sock.sendto(messageToSend.encode(), (address, port))
                 print("Invite sent. \n" + USERNAME + ">", end="")
@@ -469,7 +470,6 @@ def tellCommand(recipient, sock, listen_port):
 
 def matchCommand(message, recipient, sock, listen_port):
     #ensures server has the username of the recipient, message, lisitening port, and username of sender
-    #message =f"match {recipient} {message} {USERNAME}".encode()
     message = f"match {recipient} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
@@ -490,7 +490,6 @@ def exitCommand(sock, own_port):
     global EXIT_NOW
     EXIT_NOW = True
     while EXIT_NOW:
-        print("HERE")
         sys.exit(0)
 
 def print_menu():
@@ -622,7 +621,6 @@ def user_interface(sock, listen_port, message_queue):
                 
 
             elif command == "exit":
-                print("EXIT FROM input side")
                 message_queue.put("exit")
                 exitCommand(SOCK, listen_port)
                 break
@@ -634,7 +632,6 @@ def user_interface(sock, listen_port, message_queue):
                 if len(commandSplit) >= 2:
                     player2 = commandSplit[1]
                     message = f"match invite from:{USERNAME}:{socket.gethostbyname(socket.gethostname())}:{listen_port}"
-            
             
                     matchCommand(message, player2, sock, listen_port)
                     currentMessage = message
