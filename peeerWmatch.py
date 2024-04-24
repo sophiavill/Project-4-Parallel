@@ -233,6 +233,12 @@ def print_board(current_game, name):
         board_str = f"\n\n{current_game.player1_name}: {current_game.player1_score}\t\t{current_game.player2_name}: {current_game.player2_score}"
         board_str += "\nEnter Rock, Paper, or Scissors!\n"
 
+    if(name == "server"):
+        # print(board_str)
+        print(board_str + "\n"+ USERNAME + ">", end="")
+    else:
+        print_client_side(board_str)
+
 
 def print_board_bs(board, name, checkHere):
     board_str = ""
@@ -792,10 +798,10 @@ def serverRegister(sock, own_port):
     message = f"register {own_port} {username}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
-def whoCommand(sock):
-    # get users from server
-    message = "who".encode()
-    sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
+# def whoCommand(sock):
+#     # get users from server
+#     message = "who".encode()
+#     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
 def scoreCommand(sock):
     message = "score".encode()
@@ -839,7 +845,7 @@ def print_menu():
     print("  shout <msg>             # shout <msg> to every one online")
     print("  tell <name> <msg>       # tell user <name> message")
     print("  exit                    # quit the system")
-    print("  match <name> <game>     # Try to start a game (ttt, war, rps, horse)")
+    print("  match <name> <game>     # Try to start a game (ttt, rps, bs)")
     print("  accept <name>           # Accept an invite")
     print("  decline <name>          # Decline an invite")
     print("  score                   # Print the scoreboard and user availability")
@@ -907,15 +913,12 @@ def user_interface(sock, listen_port, message_queue):
 
                 elif command in rps_moves:
                     command = command.lower().capitalize()
-                    print("Command from the CLient: ", command)
                     message = f"MOVE {command}"
                     CLIENT_SOCKET.sendall(message.encode())
                 
                 elif command in bs_moves:
-                    print("in here 1233")
                     if len(commandSplit) == 2:
                         message = f"MOVE {command} {commandSplit[1]}"
-                        print("in here 666666")
                     else:
                         # print(message)
                         message = f"MOVE {command}"
@@ -1035,9 +1038,9 @@ def user_interface(sock, listen_port, message_queue):
 # regular server functions
                             
         else:
-            if command == "who":
-                whoCommand(sock)
-            elif command == "score":
+            # if command == "who":
+            #     whoCommand(sock)
+            if command == "score":
                 scoreCommand(sock)
 
             elif command == "shout":
