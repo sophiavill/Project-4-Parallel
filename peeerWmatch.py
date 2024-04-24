@@ -14,7 +14,6 @@ CENTRAL_SERVER_PORT = 8008
 
 EXIT_NOW = False
 
-
 USERNAME = ""
 IN_GAME = False
 IS_SERVER = False
@@ -28,6 +27,22 @@ CURRENT_GAME = None
 
 currentMessage = ""
 
+game_list = "ttt, war, rps, horse"
+GAME_TYPE = ""
+
+class RPSGame():
+    def __init__(self):
+        self.player1_name = " "
+        self.player2_name = " "
+        self.player1_move = ""
+        self.player2_move = ""
+        self.player1_score = 0
+        self.player2_score = 0
+        self.winner = ""
+        self.loser = ""
+
+
+
 class Game:
     def __init__(self):
         self.player1_name = " "
@@ -36,8 +51,6 @@ class Game:
         self.player1_faction = " "
         self.player2_faction = " "
         self.current_player = ""
-        self.is_active = False
-        self.valid_moves = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
         self.played_moves = [False] * 9
         self.player_spot = [" "] * 9
         self.winner = ""
@@ -50,22 +63,154 @@ class Game:
 
 #----------------------------------------------------------------------------------------------------------------
 
+def rpsCheck(game):
+    global CURRENT_GAME
+    thewinner = ""
+    over = False
+    rock = '''  
+        I===++*+**+
+    I===++*+**+=*+=*+
+    I=+++++=++++****+=
+    I=++++====+++++=*+=
+    I+++=+==+=++=+++++
+    I=====+++++++=-*
+        I=+=++++++++=
+        '''
+
+    paper = '''  
+    I==========I
+    I==========I
+    I==========I
+    I==========I
+    I==========I
+    I==========I
+        '''
+
+    scissors = '''  
+    _       ,/'
+   (_).  ,/'
+   __  ::
+  (__)'  `\.
+            `\.
+ 
+        ''' 
+
+    # draw
+    if game.player1_move == game.player2_move:
+        message = "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+        message += "\nIt's a tie! Play again."
+        message += "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+        message += f"\n\n{game.player1_name}: {game.player1_score}\t\t{game.player2_name}: {game.player2_score}"
+        message += "\nEnter Rock, Paper, or Scissors!\n"
+        print_client_side(message)
+    
+        message += f"{USERNAME}> "
+        print(message, end = "")
+        # reset move variables 
+        CURRENT_GAME.player1_move = ""
+        CURRENT_GAME.player2_move = ""
+        return
+
+    elif (game.player1_move == 'Rock' and game.player2_move == 'Scissors') or \
+         (game.player1_move == 'Paper' and game.player2_move == 'Rock') or \
+         (game.player1_move == 'Scissors' and game.player2_move == 'Paper'):
+        # player 1 wins
+        CURRENT_GAME.player1_score += 1
+        thewinner = CURRENT_GAME.player1_name
+        win_move = game.player1_move
+        loss_move = game.player2_move
+    else:
+        # player 2 wins
+        CURRENT_GAME.player2_score += 1
+        thewinner = CURRENT_GAME.player2_name
+        win_move = game.player2_move
+        loss_move = game.player1_move
+    
+    if(win_move == "Rock"):
+        win_move = rock 
+    elif(win_move == "Paper"):
+        win_move = paper 
+    elif(win_move == "Scissors"):
+        win_move = scissors 
+    
+    if(loss_move == "Rock"):
+        loss_move = rock 
+    elif(loss_move == "Paper"):
+        loss_move = paper 
+    elif(loss_move == "Scissors"):
+        loss_move = scissors
+
+    if(CURRENT_GAME.player1_score != 2 and CURRENT_GAME.player2_score != 2):
+        message = "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+        message += f"\n{thewinner} wins this round! On to the next game"
+        message += f"\n\n{win_move} \nbeats\n {loss_move}"
+        message += "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+        message += f"\n\n{game.player1_name}: {game.player1_score}\t\t{game.player2_name}: {game.player2_score}"
+        message += "\nEnter Rock, Paper, or Scissors!\n"
+    
+    else:
+        if (CURRENT_GAME.player1_score == 2):
+            CURRENT_GAME.winner = CURRENT_GAME.player1_name
+            win_move = CURRENT_GAME.player1_move
+            CURRENT_GAME.loser = CURRENT_GAME.player2_name
+            loss_move = CURRENT_GAME.player2_move
+        else:
+            CURRENT_GAME.winner = CURRENT_GAME.player2_name
+            win_move = CURRENT_GAME.player2_move
+            CURRENT_GAME.loser = CURRENT_GAME.player1_name
+            loss_move = CURRENT_GAME.player1_move
+        
+        if(win_move == "Rock"):
+            win_move = rock 
+        elif(win_move == "Paper"):
+            win_move = paper 
+        elif(win_move == "Scissors"):
+            win_move = scissors 
+        
+        if(loss_move == "Rock"):
+            loss_move = rock 
+        elif(loss_move == "Paper"):
+            loss_move = paper 
+        elif(loss_move == "Scissors"):
+            loss_move = scissors
+
+        message = f"\n\n{thewinner} wins this round! \n\n{win_move} \nbeats\n {loss_move} \n\nGAME OVER!! \nWinner is: {CURRENT_GAME.winner}, Loser is: {CURRENT_GAME.loser}\n\n"
+        over = True
+        
+    print_client_side(message)
+    message += f"{USERNAME}> "
+    print(message, end = "")
+    
+    if over == True:
+        # end the game
+        print_client_side('EXIT_NOW')
+    
+    # reset move variables 
+    CURRENT_GAME.player1_move = ""
+    CURRENT_GAME.player2_move = ""
+
+
 def print_client_side(message):
     for sock in SOC_LIST:
         if sock != SERVER_SOCKET and sock != sys.stdin:
             sock.sendall(message.encode())
 
 def print_board(current_game, name):
-    board_str = "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-    board_str += f"\n\n{current_game.current_player}'s turn!"
-    board_str += f"\n{current_game.player1_name}: {current_game.player1_faction} \t\t {current_game.player2_name}: {current_game.player2_faction}\n"
-    board_str += "\n    1  2  3\n"
-    for i in range(3):
-        row_label = chr(ord('A') + i)
-        board_str += row_label + "  "
-        for j in range(3):
-            board_str += " " + current_game.board[i][j] + " "
-        board_str += "\n"
+    if GAME_TYPE == "ttt":
+        board_str = "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+        board_str += f"\n\n{current_game.current_player}'s turn!"
+        board_str += f"\n{current_game.player1_name}: {current_game.player1_faction} \t\t {current_game.player2_name}: {current_game.player2_faction}\n"
+        board_str += "\n    1  2  3\n"
+        for i in range(3):
+            row_label = chr(ord('A') + i)
+            board_str += row_label + "  "
+            for j in range(3):
+                board_str += " " + current_game.board[i][j] + " "
+            board_str += "\n"
+    
+    elif GAME_TYPE == "rps":
+        board_str = f"\n\n{current_game.player1_name}: {current_game.player1_score}\t\t{current_game.player2_name}: {current_game.player2_score}"
+        board_str += "\nEnter Rock, Paper, or Scissors!\n"
 
     if(name == "server"):
         # print(board_str)
@@ -164,7 +309,7 @@ def exitFuncServer(source):
     print_client_side('GAMEOVER')
 
     #tell the game server
-    if(CURRENT_GAME.draw):
+    if(GAME_TYPE == "ttt" and CURRENT_GAME.draw):
         message = f"DRAW {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
     else:
         message = f"GAMEOVER {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
@@ -280,40 +425,66 @@ def receiveMessages(sock, message_queue):
                                 sockets_list.append(client_socket)
         
                                 if(printedBool == False):
-                                    current_game = Game()
+                                    if GAME_TYPE == 'ttt':
+                                        current_game = Game()
 
-                                    print("\nSuccess! Game started with:", other_player_name)
+                                        print("\nSuccess! Game started with:", other_player_name)
 
-                                    # get the server the game menu
-                                    print_game_menu(1)
+                                        # get the server the game menu
+                                        print_game_menu(1)
 
-                                    message = "Game pices have been randomly assigned: \n"
-                                    message += "X will go first.\n\n"
-                                    factions = ['X', 'O']
-                                    random.shuffle(factions)
-                                    current_game.player1_faction, current_game.player2_faction = factions
-                                    
-                                    current_game.player1_name = USERNAME
-                                    current_game.player2_name = other_player_name
-                                    message += f"Player 1 is {current_game.player1_name}: {current_game.player1_faction}\n"
-                                    message += f"Player 2 is {current_game.player2_name}: {current_game.player2_faction}\n"
+                                        message = "Game pices have been randomly assigned: \n"
+                                        message += "X will go first.\n\n"
+                                        factions = ['X', 'O']
+                                        random.shuffle(factions)
+                                        current_game.player1_faction, current_game.player2_faction = factions
+                                        
+                                        current_game.player1_name = USERNAME
+                                        current_game.player2_name = other_player_name
+                                        message += f"Player 1 is {current_game.player1_name}: {current_game.player1_faction}\n"
+                                        message += f"Player 2 is {current_game.player2_name}: {current_game.player2_faction}\n"
 
-                                    if (current_game.player1_faction == 'X'):
-                                        current_game.current_player = current_game.player1_name
-                                    else:
-                                        current_game.current_player = current_game.player2_name
+                                        if (current_game.player1_faction == 'X'):
+                                            current_game.current_player = current_game.player1_name
+                                        else:
+                                            current_game.current_player = current_game.player2_name
 
 
-                                    print_client_side(message)
-                                    print(message)
+                                        print_client_side(message)
+                                        print(message)
 
-                                    print_board(current_game, "server")
-                                    
-                                    print_board(current_game, "client")
+                                        print_board(current_game, "server")
+                                        
+                                        print_board(current_game, "client")
 
-                                    printedBool = True
-                                    global CURRENT_GAME
-                                    CURRENT_GAME = current_game
+                                        printedBool = True
+                                        global CURRENT_GAME
+                                        CURRENT_GAME = current_game
+
+                                    if GAME_TYPE == "rps":
+                                        current_game = RPSGame()
+                                        print("\nSuccess! Game started with:", other_player_name)
+
+                                        # get the server the game menu
+                                        print_game_menu(1)
+
+                                        message = "Welcome to Rock, Paper, Scissors: \n"
+                                        message += "Each player will input their move. Best 2/3 wins!\n\n"
+                                        
+                                        current_game.player1_name = USERNAME
+                                        current_game.player2_name = other_player_name
+
+                                        message += f"{current_game.player1_name}: {current_game.player1_score}\t\t{current_game.player2_name}: {current_game.player2_score}"
+
+                                        message += "\nEnter Rock, Paper, or Scissors!\n"
+                                        print_client_side(message)
+                                        message += f"{USERNAME}> "
+                                        print(message, end="")
+
+                                        printedBool = True
+                                        CURRENT_GAME = current_game
+
+
                             else:
                                 # Handle client socket
                                 data = source.recv(1024)
@@ -326,24 +497,49 @@ def receiveMessages(sock, message_queue):
                                     command = " "
                                 
                                 if data:
-                                    # print(f"Received from username: {clean_data}")
-
                                     if(command == "exit"):
                                         exitFuncServer(source)
-                                    elif command == "MOVE":
-                                        # check if their turn
-                                        if(CURRENT_GAME.current_player != USERNAME):
-                                            # gameplay(move, type, player_faction)
-                                            gameplay(commandSplit[1], "client", CURRENT_GAME.player2_faction)
+
+                                    if GAME_TYPE == "ttt":
+                                        if command == "MOVE":
+                                            # check if their turn
+                                            if(CURRENT_GAME.current_player != USERNAME):
+                                                # gameplay(move, type, player_faction)
+                                                gameplay(commandSplit[1], "client", CURRENT_GAME.player2_faction)
+                                            else:
+                                                print_client_side("It is not your turn!")
+                                            
+                                        elif(command == "refresh"):
+                                            print_board(CURRENT_GAME, "client")
+
                                         else:
-                                            print_client_side("It is not your turn!")
-                                    elif(command == "refresh"):
-                                        print_board(CURRENT_GAME, "client")
+                                            clean_send = clean_data + "\n" + USERNAME + "> "
+                                            print(clean_send, end="")
+
+                                    elif GAME_TYPE == "rps":
+                                        if(command == "RPSMOVE"):
+                                            # assign the choice 
+                                            CURRENT_GAME.player2_move = commandSplit[1]
+                                            # check if other person played 
+                                            if CURRENT_GAME.player1_move != "":
+                                                # check for a win
+                                                rpsCheck(CURRENT_GAME)
+                                            else:
+                                                print_client_side(f"Waiting for {CURRENT_GAME.player1_name}...")
+                                        elif(command == "refresh"):
+                                            print_board(CURRENT_GAME, "client")
+                                        else:
+                                            clean_send = clean_data + "\n" + USERNAME + "> "
+                                            print(clean_send, end="")
+                                                
+
+
+
                                     
 
-                                    else:
-                                        clean_send = clean_data + "\n" + USERNAME + "> "
-                                        print(clean_send, end="")
+                                    # else:
+                                    #     clean_send = clean_data + "\n" + USERNAME + "> "
+                                    #     print(clean_send, end="")
 
                 except KeyboardInterrupt:
                     # Close all sockets
@@ -379,6 +575,7 @@ def receiveMessages(sock, message_queue):
                 print("Message sent.\n" + USERNAME + "> ", end="")
             
             elif message.startswith("GAMEOVER"):
+                print(f"Welcome back to the game server!")
                 IN_GAME = False
                 IS_CLIENT = False
                 message_queue = queue.Queue()
@@ -415,26 +612,29 @@ def serverRegister(sock, own_port):
     tic = r""" 
        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
                                      ██████╗ ██████╗ ██████╗ 
                                      ██╔══██╗╚════██╗██╔══██╗
                                      ██████╔╝ █████╔╝██████╔╝
                                      ██╔═══╝ ██╔═══╝ ██╔═══╝ 
                                      ██║     ███████╗██║     
-                                     ╚═╝     ╚══════╝╚═╝     
-                        
-
-
-         ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗
-         ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝
-            ██║   ██║██║            ██║   ███████║██║            ██║   ██║   ██║█████╗  
-            ██║   ██║██║            ██║   ██╔══██║██║            ██║   ██║   ██║██╔══╝  
-            ██║   ██║╚██████╗       ██║   ██║  ██║╚██████╗       ██║   ╚██████╔╝███████╗
-            ╚═╝   ╚═╝ ╚═════╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝       ╚═╝    ╚═════╝ ╚══════╝
-
+                                     ╚═╝     ╚══════╝╚═╝ 
+                    
+                         █████╗ ██████╗  ██████╗ █████╗ ██████╗ ███████╗
+                        ██╔══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝
+                        ███████║██████╔╝██║     ███████║██║  ██║█████╗  
+                        ██╔══██║██╔══██╗██║     ██╔══██║██║  ██║██╔══╝  
+                        ██║  ██║██║  ██║╚██████╗██║  ██║██████╔╝███████╗
+                        ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝ ╚══════╝
+                                                                
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         """
+      #  ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗
+        #  ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝
+        #     ██║   ██║██║            ██║   ███████║██║            ██║   ██║   ██║█████╗  
+        #     ██║   ██║██║            ██║   ██╔══██║██║            ██║   ██║   ██║██╔══╝  
+        #     ██║   ██║╚██████╗       ██║   ██║  ██║╚██████╗       ██║   ╚██████╔╝███████╗
+        #     ╚═╝   ╚═╝ ╚═════╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝       ╚═╝    ╚═════╝ ╚══════╝
                                                                                   
 
     # welcome = ("\n\n\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
@@ -500,7 +700,7 @@ def print_menu():
     print("  shout <msg>             # shout <msg> to every one online")
     print("  tell <name> <msg>       # tell user <name> message")
     print("  exit                    # quit the system")
-    print("  match <name>            # Try to start a game")
+    print("  match <name> <game>     # Try to start a game (ttt, war, rps, horse)")
     print("  accept <name>           # Accept an invite")
     print("  decline <name>          # Decline an invite")
     print("  score                   # Print the scoreboard and user availability")
@@ -543,6 +743,7 @@ def user_interface(sock, listen_port, message_queue):
 
         if(IN_GAME == True):
             valid_moves = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"]
+            rps_moves = ["Rock", "Paper", "Scissors", "rock", "paper", "scissors"]
 
             if(IS_CLIENT == True):
                 message = allCommand
@@ -556,11 +757,19 @@ def user_interface(sock, listen_port, message_queue):
                     print_game_menu(2)
                 elif(command == "exit"):
                     CLIENT_SOCKET.sendall(command.encode())
+                
                 elif(command in valid_moves):
                     message = f"MOVE {command}"
                     CLIENT_SOCKET.sendall(message.encode())
                 elif(command == "refresh"):
                     CLIENT_SOCKET.sendall(command.encode())
+
+                elif command in rps_moves:
+                    command = command.lower().capitalize()
+                    print("Command from the CLient: ", command)
+                    message = f"RPSMOVE {command}"
+                    CLIENT_SOCKET.sendall(message.encode())
+
 
                 #  elif to chec if valiud move, if it is: we will send to the server 
                     # send to serervr
@@ -588,6 +797,19 @@ def user_interface(sock, listen_port, message_queue):
                             
                     else:
                         print("It is not your turn!\n" + USERNAME + "> ", end="")
+
+                elif command in rps_moves:
+                        command = command.lower().capitalize()
+                        print("Command from the server: ", command)
+                       # assign the choice 
+                        CURRENT_GAME.player1_move = command
+                        # check if other person played 
+                        if CURRENT_GAME.player2_move != "":
+                            # check for a win
+                            rpsCheck(CURRENT_GAME)
+                        else:
+                            toSend = f"Waiting for {CURRENT_GAME.player2_name}... \n{USERNAME}> "
+                            print(toSend, end="")
 
                     
                 else:
@@ -635,15 +857,24 @@ def user_interface(sock, listen_port, message_queue):
                 print_menu()
             
             elif command == "match":
-                if len(commandSplit) >= 2:
-                    player2 = commandSplit[1]
-                    message = f"match invite from:{USERNAME}:{socket.gethostbyname(socket.gethostname())}:{listen_port}"
-            
-                    matchCommand(message, player2, sock, listen_port)
-                    currentMessage = message
+                if len(commandSplit) >= 3:
+                    game_type = commandSplit[2]
+                    if game_type not in game_list:
+                        print("Game type not valid.")
+                        print(USERNAME + "> ", end="")
+    
+                    else:  
+                        player2 = commandSplit[1]
+                        message = f"match invite from:{USERNAME}:{socket.gethostbyname(socket.gethostname())}:{listen_port}"
+                
+                        matchCommand(message, player2, sock, listen_port)
+                        currentMessage = message
+                        
+                        global GAME_TYPE
+                        GAME_TYPE = game_type
                     
                 else:
-                    print("Missing recipient username.")
+                    print("Missing recipient username or game type.")
                     print(USERNAME + "> ", end="")
 
             elif command == "decline":
@@ -678,39 +909,7 @@ def user_interface(sock, listen_port, message_queue):
                 toSend = "Command not supported.\n" + USERNAME + "> "
                 print(toSend, end="")
 
-#Experimental functionality
-#allows peer to listen to other peers (I hope)
-def tcpServer(listen_port):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind(('0.0.0.0', listen_port))
-    server_socket.listen()
-    print("This Peer is listening on port", listen_port)
-
-    while True:
-        client_socket, addr = server_socket.accept()
-        print(f"Accepted connection from {addr}")
-        threading.Thread(target=handlePeer, args=(client_socket,)).start()
-
-#handle peer comms
-def handlePeer(client_socket):
-    with client_socket:
-        try:
-            while True:
-                data = client_socket.recv(1024)
-                if not data:
-                    break
-                recievedMsg = data.decode()
-                print("Received:", data.decode())
-        except Exception as e:
-            print("Peer handling error:", e)
-
-
 def main(listen_port):
-
-    # #TCP setup - should allow for peer to peer comms
-    # threading.Thread(target=tcpServer, args=(listen_port,), daemon=True).start()
-
     #UDP code - peer to central
     global SOCK
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
