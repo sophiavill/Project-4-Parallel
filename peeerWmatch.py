@@ -355,8 +355,11 @@ def exitFuncServer(source):
     print_client_side('GAMEOVER')
 
     #tell the game server
-    if(GAME_TYPE == "ttt" and CURRENT_GAME.draw):
-        message = f"DRAW {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
+    if(GAME_TYPE == "ttt"):
+        if(CURRENT_GAME.draw):
+            message = f"DRAW {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
+        else:
+            message = f"GAMEOVER {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
     else:
         message = f"GAMEOVER {CURRENT_GAME.winner} {CURRENT_GAME.loser}".encode()
     
@@ -569,6 +572,8 @@ def receiveMessages(sock, message_queue):
                                 if data:
                                     
                                     if(command == "exit"):
+                                        CURRENT_GAME.winner = CURRENT_GAME.player1_name
+                                        CURRENT_GAME.loser = CURRENT_GAME.player2_name
                                         exitFuncServer(source)
 
                                     if GAME_TYPE == "ttt":
@@ -945,6 +950,8 @@ def user_interface(sock, listen_port, message_queue):
                     print_board(CURRENT_GAME, "server")
                 elif(command == "exit"):
                     # all exiting has to happen inside server loop
+                    CURRENT_GAME.winner = CURRENT_GAME.player2_name
+                    CURRENT_GAME.loser = CURRENT_GAME.player1_name
                     print_client_side('EXIT_NOW')
                 elif(command in valid_moves and GAME_TYPE == "ttt"):
                     # check if my turn, do stuff based on that
