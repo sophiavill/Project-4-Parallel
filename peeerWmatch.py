@@ -2,7 +2,6 @@ import socket
 import threading
 import queue
 import sys
-# import re
 import select
 import time
 import random
@@ -12,12 +11,15 @@ CENTRAL_SERVER_IP = '0.0.0.0'
 #CENTRAL_SERVER_IP = '128.186.120.158' 
 CENTRAL_SERVER_PORT = 8008
 
+# bool to know when to exit
 EXIT_NOW = False
-
+# holds the clients username and states 
 USERNAME = ""
 IN_GAME = False
 IS_SERVER = False
 IS_CLIENT = False
+
+# holds client/socket info
 CLIENT_SOCKET = 0
 SOC_LIST = []
 SERVER_SOCKET = 0
@@ -27,6 +29,7 @@ CURRENT_GAME = None
 
 currentMessage = ""
 
+# global game info
 game_list = "ttt" , "rps", "bs"
 GAME_TYPE = ""
 
@@ -45,16 +48,15 @@ class BSGame():
     def __init__(self):
         self.player1_name = " "
         self.player2_name = " "
-        self.player1_move = ""
-        self.player2_move = ""
+        # self.player1_move = ""
+        # self.player2_move = ""
         self.player1_score = 0
         self.player2_score = 0
         self.winner = ""
         self.loser = ""
         self.waiting_for_ship_client = True
         self.waiting_for_ship_server = True
-
-
+        # 2 boards each player: one for their own ships/board, one for their attempts 
         self.player1_my_board = self.init_board()
         self.player1_other_board = self.init_board()
         self.player2_my_board = self.init_board()
@@ -63,12 +65,12 @@ class BSGame():
     def init_board(self):
         return [['.' for _ in range(5)] for _ in range(5)]
 
-
 class Game:
     def __init__(self):
         self.player1_name = " "
         self.player2_name = " "
         self.board = self.init_board()
+        # faction is X or O
         self.player1_faction = " "
         self.player2_faction = " "
         self.current_player = ""
@@ -81,7 +83,6 @@ class Game:
     def init_board(self):
         return [['.' for _ in range(3)] for _ in range(3)]
     
-
 #----------------------------------------------------------------------------------------------------------------
 
 def rpsCheck(game):
@@ -105,9 +106,10 @@ def rpsCheck(game):
     I==========I
     I==========I
     I==========I
+    I==========I
         '''
 
-    scissors = '''  
+    scissors = r'''  
     _       ,/'
    (_).  ,/'
    __  ::
@@ -146,7 +148,7 @@ def rpsCheck(game):
         thewinner = CURRENT_GAME.player2_name
         win_move = game.player2_move
         loss_move = game.player1_move
-    
+    # get the ascii art in
     if(win_move == "Rock"):
         win_move = rock 
     elif(win_move == "Paper"):
@@ -161,6 +163,7 @@ def rpsCheck(game):
     elif(loss_move == "Scissors"):
         loss_move = scissors
 
+    # game is over
     if(CURRENT_GAME.player1_score != 2 and CURRENT_GAME.player2_score != 2):
         message = "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
         message += f"\n{thewinner} wins this round! On to the next game"
@@ -171,11 +174,13 @@ def rpsCheck(game):
     
     else:
         if (CURRENT_GAME.player1_score == 2):
+            # player 1 wins it all
             CURRENT_GAME.winner = CURRENT_GAME.player1_name
             win_move = CURRENT_GAME.player1_move
             CURRENT_GAME.loser = CURRENT_GAME.player2_name
             loss_move = CURRENT_GAME.player2_move
         else:
+            # player 2 wins it all
             CURRENT_GAME.winner = CURRENT_GAME.player2_name
             win_move = CURRENT_GAME.player2_move
             CURRENT_GAME.loser = CURRENT_GAME.player1_name
@@ -202,20 +207,21 @@ def rpsCheck(game):
     message += f"{USERNAME}> "
     print(message, end = "")
     
+    # end the game
     if over == True:
-        # end the game
         print_client_side('EXIT_NOW')
     
-    # reset move variables 
+    # reset move variables every round
     CURRENT_GAME.player1_move = ""
     CURRENT_GAME.player2_move = ""
 
-
+# print client side from game server
 def print_client_side(message):
     for sock in SOC_LIST:
         if sock != SERVER_SOCKET and sock != sys.stdin:
             sock.sendall(message.encode())
 
+# print the board only for ttt and rps - used for refresh as well
 def print_board(current_game, name):
     if GAME_TYPE == "ttt":
         board_str = "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
@@ -234,20 +240,17 @@ def print_board(current_game, name):
         board_str += "\nEnter Rock, Paper, or Scissors!\n"
 
     if(name == "server"):
-        # print(board_str)
         print(board_str + "\n"+ USERNAME + ">", end="")
     else:
         print_client_side(board_str)
 
-
+# use for bs - used for refresh as well
 def print_board_bs(board, name, checkHere):
     board_str = ""
-
     if checkHere == True:
         board_str = "\nHere is your board. O represents your ships, X is a hit: "
     else:
         board_str = "\nHere is your opponent's board. # represents HIT ships, X is miss: "
-
 
     board_str += "\n    A  B  C  D  E\n"
     for i in range(5):
@@ -256,14 +259,13 @@ def print_board_bs(board, name, checkHere):
         for j in range(5):
             board_str += " " + board[i][j] + " "
         board_str += "\n"
-        
 
     if(name == "server"):
-        # print(board_str)
         print(board_str + "\n"+ USERNAME + ">", end="")
     else:
         print_client_side(board_str)
 
+# check for winner in ttt
 def check_win(board, player):
    # rows
    for i in range(3):
@@ -280,12 +282,15 @@ def check_win(board, player):
    return False
 
 def check_draw(board):
+   # if anything is empty, there is no draw
    for i in range(3):
        for j in range(3):
            if board[i][j] == '.':
-               return False  # if any cell is empty, game is not a draw
-   return True  # if all cells are filled and no winner, it's a draw
+               return False 
+    # if all spots full, draw
+   return True 
 
+# actual playing of ttt
 def gameplay(move, player_type, faction):
     global CURRENT_GAME
 
@@ -293,6 +298,7 @@ def gameplay(move, player_type, faction):
     row_index = ord(row) - ord('A')
     column_index = col
 
+    # error check
     if row_index < 0 or row_index >= 3 or column_index < 0 or column_index >= 3 or CURRENT_GAME.board[row_index][column_index] != '.':
         if(player_type == "server"):
             print("Invalid move. Try again. \n" + USERNAME + "> ", end="")
@@ -308,9 +314,11 @@ def gameplay(move, player_type, faction):
     else:
         CURRENT_GAME.current_player = CURRENT_GAME.player1_name
 
+    # print board to both players after a move is made
     print_board(CURRENT_GAME, "server")
     print_board(CURRENT_GAME, "client")
 
+    # if there is a win, see who won
     if(check_win(CURRENT_GAME.board, faction)):
         if(player_type == "server"):
             message = "\nGame over! " + CURRENT_GAME.player1_name + " won and " + CURRENT_GAME.player2_name + " lost.\n"
@@ -324,7 +332,7 @@ def gameplay(move, player_type, faction):
             CURRENT_GAME.winner = CURRENT_GAME.player2_name
             print(message)
             print_client_side(message)
-        
+        # exit if win
         print_client_side('EXIT_NOW')
     
     elif(check_draw(CURRENT_GAME.board)):
@@ -332,14 +340,12 @@ def gameplay(move, player_type, faction):
         print(message)
         print_client_side(message)
         CURRENT_GAME.draw = True
-
+        # exit if draw
         print_client_side('EXIT_NOW')
 
-
-    
-    
-#----------------------------------------------------------------------------------------------------------------
+# end of game funcs-------------------------------------------------------------------------
 def exitFuncServer(source):
+    # exit from the game server back to the central server
     SOC_LIST.remove(source)
     source.close()
     SERVER_SOCKET.close()
@@ -347,14 +353,12 @@ def exitFuncServer(source):
     IN_GAME = False
     IS_SERVER = False
     print(f"Welcome back to the game server!")
-
-    # print("Active Threads:")
-    # for thread in threading.enumerate():
-    #     print(thread.name)
-
+    # tell the client to exit too
     print_client_side('GAMEOVER')
 
-    #tell the game server
+    # print("here in exit. WInner is: ", CURRENT_GAME.winner, " loser is: ", CURRENT_GAME.loser)
+
+    #tell the central server - all games (except in a draw case) return the same way
     if(GAME_TYPE == "ttt"):
         if(CURRENT_GAME.draw):
             message = f"DRAW {CURRENT_GAME.player1_name} {CURRENT_GAME.player2_name}".encode()
@@ -378,23 +382,19 @@ def receiveMessages(sock, message_queue):
     global USERNAME
     while True:
         try:
-            
             message, _ = sock.recvfrom(4096) 
             message = message.decode()
             
             if message.startswith("MATCH"):
-                
                 messageSplit = message.split(":")
                 port = int(messageSplit[1])
                 address = messageSplit[2]
             
                 messageToSend = f"\nDo you want to accept the game from {USERNAME}?\n(accept {USERNAME} or decline {USERNAME})"
-                #response = input("Accept the match? (accept/decline): ") 
                 sock.sendto(messageToSend.encode(), (address, port))
                 print("Invite sent. \n" + USERNAME + ">", end="")
                 
             elif message.startswith("DECLINE"):
-                
                 messageSplit = message.split(":")
                 port = int(messageSplit[1])
                 address = messageSplit[2]
@@ -417,7 +417,9 @@ def receiveMessages(sock, message_queue):
                 retries = 5
                 delay = 2
                 sock = None
-
+                # since they are both starting and connecting at the same time,
+                # the user may need a delay in connecting to the server
+                # they will try 5 times to connect with a growing delay 
                 for attempt in range(retries):
                     try:
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -428,11 +430,11 @@ def receiveMessages(sock, message_queue):
                         time.sleep(delay) 
 
                 if not sock:
-                    raise Exception("Server is not accepting connections")
+                    raise Exception("Could not connect to server. Request game again.")
+                    return
                 
                 print("\nSuccess! Game started with:", other_player_name)
                 print_game_menu(1)
-                # print board game 
 
                 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 client_socket.connect((address, port))
@@ -463,23 +465,20 @@ def receiveMessages(sock, message_queue):
                 printedBool = False
                 try:
                     while True:
-                        # Use select to handle input from multiple sockets (including stdin)
+                        # Use select to handle input from multiple sockets
                         readable, _, _ = select.select(sockets_list, [], [])
                         global READABLE
                         READABLE = readable
                         for source in readable:
                             if source == server_socket:
-                                # Handle the server socket
                                 client_socket, client_address = server_socket.accept()
-                                # print(f"Connected by {client_address}")
                                 sockets_list.append(client_socket)
         
                                 if(printedBool == False):
+                                    # print this welcome the first time they connect
                                     if GAME_TYPE == 'ttt':
                                         current_game = Game()
-
                                         print("\nSuccess! Game started with:", other_player_name)
-
                                         # get the server the game menu
                                         print_game_menu(1)
 
@@ -499,12 +498,10 @@ def receiveMessages(sock, message_queue):
                                         else:
                                             current_game.current_player = current_game.player2_name
 
-
                                         print_client_side(message)
                                         print(message)
 
-                                        print_board(current_game, "server")
-                                        
+                                        print_board(current_game, "server")                                        
                                         print_board(current_game, "client")
 
                                         printedBool = True
@@ -556,38 +553,37 @@ def receiveMessages(sock, message_queue):
                                         printedBool = True
                                         CURRENT_GAME = current_game
 
-
                             else:
-                                # Handle client socket
+                                # handle client socket
                                 data = source.recv(1024)
                                 clean_data = data.decode().strip()
-
                                 commandSplit = clean_data.split()
-
+                                # split command and other following inputs
                                 if commandSplit:
                                     command = commandSplit[0]
                                 else:
                                     command = " "
                                 
                                 if data:
-                                    
                                     if(command == "exit"):
-                                        CURRENT_GAME.winner = CURRENT_GAME.player1_name
-                                        CURRENT_GAME.loser = CURRENT_GAME.player2_name
+                                        if(CURRENT_GAME.winner == ""):
+                                            # assign winner/loser if the user quits
+                                            CURRENT_GAME.winner = CURRENT_GAME.player1_name
+                                            CURRENT_GAME.loser = CURRENT_GAME.player2_name
+                                        # exit the game server
                                         exitFuncServer(source)
 
                                     if GAME_TYPE == "ttt":
                                         if command == "MOVE":
                                             # check if their turn
                                             if(CURRENT_GAME.current_player != USERNAME):
-                                                # gameplay(move, type, player_faction)
                                                 gameplay(commandSplit[1], "client", CURRENT_GAME.player2_faction)
                                             else:
                                                 print_client_side("It is not your turn!")
                                             
                                         elif(command == "refresh"):
                                             print_board(CURRENT_GAME, "client")
-
+                                            
                                         else:
                                             clean_send = clean_data + "\n" + USERNAME + "> "
                                             print(clean_send, end="")
@@ -609,21 +605,22 @@ def receiveMessages(sock, message_queue):
                                             print(clean_send, end="")
                                     
                                     elif GAME_TYPE == "bs":
-                                        
                                         if(CURRENT_GAME.waiting_for_ship_client == True):
-                                            
+                                            # get location of their own ships
                                             if command == "MOVE":
+                                                # ship 1
                                                 move = commandSplit[1]
 
-                                                row, col = int(move[:-1]), move[-1]  # Extracting row and column from the move
+                                                row, col = int(move[:-1]), move[-1]  
                                                 row_index = row - 1
                                                 column_index = ord(col) - ord('A')
 
                                                 CURRENT_GAME.player2_my_board[row_index][column_index] = "O"
-
+                                                
+                                                # ship 1
                                                 move = commandSplit[2]
                                                 
-                                                row, col = int(move[:-1]), move[-1]  # Extracting row and column from the move
+                                                row, col = int(move[:-1]), move[-1]
                                                 row_index = row - 1
                                                 column_index = ord(col) - ord('A')
 
@@ -631,29 +628,30 @@ def receiveMessages(sock, message_queue):
 
                                                 # add ships to board
                                                 print_board_bs(current_game.player2_my_board, "client", True)
-                                                
-                                               
                                                 CURRENT_GAME.waiting_for_ship_client = False
-
                                                 print_client_side("\n\nEnter target coordinate: ")
                                         
                                         elif(command == "MOVE" and CURRENT_GAME.waiting_for_ship_client == False):
                                             # getting regular coordinate iput from client (player 2)
-                                            
                                             move = commandSplit[1]
 
-                                            row, col = int(move[:-1]), move[-1]  # Extracting row and column from the move
+                                            row, col = int(move[:-1]), move[-1]
                                             row_index = row - 1
                                             column_index = ord(col) - ord('A')
+                                            # if the spot was blank (no hit)
                                             if (CURRENT_GAME.player1_my_board[row_index][column_index] == '.'):
+                                                # put an X on both my board and the other player board to show
+                                                # where I dropped my bomb
                                                 CURRENT_GAME.player1_my_board[row_index][column_index] = "X"
                                                 CURRENT_GAME.player2_other_board[row_index][column_index] = "X"
                                                 print_board_bs(CURRENT_GAME.player2_my_board, "client", True)
                                                 print_board_bs(CURRENT_GAME.player2_other_board, "client", False)
                                                 print_client_side("No hit! \n\nEnter target coordinate:")
                                             
+                                            # if the spot had a ship in it (hit!)
                                             elif (CURRENT_GAME.player1_my_board[row_index][column_index] == 'O'):
-                                                
+                                                # put an # on both my board and the other player board to show
+                                                # where the ship sank
                                                 CURRENT_GAME.player1_my_board[row_index][column_index] = "#"
                                                 CURRENT_GAME.player2_other_board[row_index][column_index] = "#"
                                                 print_board_bs(CURRENT_GAME.player2_my_board, "client", True)
@@ -661,11 +659,14 @@ def receiveMessages(sock, message_queue):
 
                                                 CURRENT_GAME.player2_score += 1
                                                 messageHere = "Nice hit, you sunk a ship!"
-
+                                                # if they sunk both ships
                                                 if(CURRENT_GAME.player2_score == 2):
                                                     CURRENT_GAME.winner = CURRENT_GAME.player2_name
                                                     CURRENT_GAME.loser = CURRENT_GAME.player1_name
-                                                    print_client_side("you win!")
+                                                    message_here = f"\nGood job! You sunk all of {CURRENT_GAME.player1_name}'s ships! You win!"
+                                                    print_client_side(message_here)
+                                                    message_here = f"\nYou lose! {CURRENT_GAME.player2_name} sunk all of your ships!"
+                                                    print(message_here)
                                                     exitFuncServer(source)
                                                         
                                                 else:
@@ -673,23 +674,18 @@ def receiveMessages(sock, message_queue):
                                                 
                                                 print_client_side(messageHere)
                                            
+                                            # already dropped a bomb there 
                                             elif (CURRENT_GAME.player1_my_board[row_index][column_index] == 'X'):
                                                 print_client_side("You already hit this spot! \n\nEnter target coordinate:")
-
-                                            
+                                        
+                                        # print both boards again
+                                        elif(command == "refresh"):
+                                            print_board_bs(CURRENT_GAME.player2_my_board, "client", True)
+                                            print_board_bs(CURRENT_GAME.player2_other_board, "client", False)
 
                                         else:
                                             clean_send = clean_data + "\n" + USERNAME + "> "
                                             print(clean_send, end="")
-                                                
-
-
-
-                                    
-
-                                    # else:
-                                    #     clean_send = clean_data + "\n" + USERNAME + "> "
-                                    #     print(clean_send, end="")
 
                 except KeyboardInterrupt:
                     # Close all sockets
@@ -714,9 +710,11 @@ def receiveMessages(sock, message_queue):
                 print(messageParts[1] + "\n" + USERNAME + "> ", end="")
 
             elif message.startswith("SHOUT"):
+                # the central server will send all users IP addresses sep by newlines
                 lines = message.split('\n')
                 for line in lines[1:]:
                     lineSplit = line.split('-')
+                    # sep each line and take the address and port for each player 
                     if len(lineSplit) >= 2:
                         address = lineSplit[0]
                         port = int(lineSplit[1])
@@ -725,6 +723,7 @@ def receiveMessages(sock, message_queue):
                 print("Message sent.\n" + USERNAME + "> ", end="")
             
             elif message.startswith("GAMEOVER"):
+                # come back from game server
                 print(f"Welcome back to the game server!")
                 IN_GAME = False
                 IS_CLIENT = False
@@ -733,13 +732,13 @@ def receiveMessages(sock, message_queue):
                 user_interface(SOCK, listen_port, message_queue)
                 SOCK.close()
             
+            # signal to the game server we want to exit 
             elif message.startswith("EXIT_NOW"):
-                    command = "exit"
-                    CLIENT_SOCKET.sendall(command.encode())
+                command = "exit"
+                CLIENT_SOCKET.sendall(command.encode())
     
             else:
                 message_queue.put(f"\n{message}")
-                # print(USERNAME + "> ", end="")
 
         except Exception as e:
             message_queue.put(f"An error occurred: {e}")
@@ -754,11 +753,9 @@ def printMessage(message_queue):
         print(USERNAME + "> ", end="", flush=True) 
 
 
-# communicate w the match server
-            
+# all these are sent to/communicated with central server
 def serverRegister(sock, own_port):
     # send username + port to the server 
-
     tic = r""" 
        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -779,39 +776,20 @@ def serverRegister(sock, own_port):
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         """
-      #  ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗
-        #  ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝
-        #     ██║   ██║██║            ██║   ███████║██║            ██║   ██║   ██║█████╗  
-        #     ██║   ██║██║            ██║   ██╔══██║██║            ██║   ██║   ██║██╔══╝  
-        #     ██║   ██║╚██████╗       ██║   ██║  ██║╚██████╗       ██║   ╚██████╔╝███████╗
-        #     ╚═╝   ╚═╝ ╚═════╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝       ╚═╝    ╚═════╝ ╚══════╝
-                                                                                  
-
-    # welcome = ("\n\n\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-    #        + "\t\t%                                         %\n"
-    #        + "\t\t%             Welcome to the P2P          %\n"
-    #        + "\t\t%         Online Tic-tac-toe Server       %\n"
-    #        + "\t\t%                                         %\n"
-    #        + "\t\t%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
     print("\n\n\t\t" + tic + "\n")
 
     username = input("> Enter your username: ")
-    
+    # save username as a global variable for easy access
     global USERNAME 
     USERNAME = username
 
     message = f"register {own_port} {username}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
-# def whoCommand(sock):
-#     # get users from server
-#     message = "who".encode()
-#     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-
+# all sent to central server
 def scoreCommand(sock):
     message = "score".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
-
 
 def shoutCommand(sock):
     message = "shout".encode()
@@ -822,7 +800,7 @@ def tellCommand(recipient, sock, listen_port):
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
 def matchCommand(message, recipient, sock, listen_port):
-    #ensures server has the username of the recipient, message, lisitening port, and username of sender
+    # ensures server has the username of the recipient, message, lisitening port, and username of sender
     message = f"match {recipient} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
 
@@ -835,7 +813,6 @@ def acceptCommand(message, recipient, sock, listen_port):
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     
 def exitCommand(sock, own_port):
-    message = f"exit {own_port} {USERNAME}"
     message = f"exit {own_port} {USERNAME}".encode()
     sock.sendto(message, (CENTRAL_SERVER_IP, CENTRAL_SERVER_PORT))
     print("May need to enter to confirm > ", end="")
@@ -868,17 +845,14 @@ def print_game_menu(number):
     else:
         print("\n\n")
 
+# take input in from user
 def user_interface(sock, listen_port, message_queue):
     threading.Thread(target=printMessage, args=(message_queue,), daemon=True).start()
-
+    # first time, print menu
     print_menu()
     
     while True:
-        # print("Active Threads:")
-        # for thread in threading.enumerate():
-        #     print(thread.name)
-
- 
+        # break up input if needed
         allCommand = input()
         commandSplit = allCommand.split()
         if commandSplit:
@@ -897,10 +871,9 @@ def user_interface(sock, listen_port, message_queue):
             rps_moves = ["Rock", "Paper", "Scissors", "rock", "paper", "scissors"]
             bs_moves = ['1A', '2A', '3A', '4A', '5A', '1B', '2B', '3B', '4B', '5B', '1C', '2C', '3C', '4C', '5C', '1D', '2D', '3D', '4D', '5D', '1E', '2E', '3E', '4E', '5E']
 
+            # client in peer to peer server
             if(IS_CLIENT == True):
                 message = allCommand
-                # CLIENT_SOCKET.sendall(message.encode())
-
                 if command == "tell":
                     message = f"\n{USERNAME}: {' '.join(commandSplit[1:])}"
                     CLIENT_SOCKET.sendall(message.encode())
@@ -909,37 +882,40 @@ def user_interface(sock, listen_port, message_queue):
                     print_game_menu(2)
                 elif(command == "exit"):
                     CLIENT_SOCKET.sendall(command.encode())
-                
+                # valid ttt moves
                 elif(command in valid_moves):
                     message = f"MOVE {command}"
                     CLIENT_SOCKET.sendall(message.encode())
                 elif(command == "refresh"):
                     CLIENT_SOCKET.sendall(command.encode())
-
+                # valid rps moves
                 elif command in rps_moves:
                     command = command.lower().capitalize()
                     message = f"MOVE {command}"
                     CLIENT_SOCKET.sendall(message.encode())
-                
+                # valid bs moves
                 elif command in bs_moves:
+                    # if its the first two ship placements
                     if len(commandSplit) == 2:
-                        message = f"MOVE {command} {commandSplit[1]}"
+                        if(command in bs_moves and commandSplit[1] in bs_moves):
+                            message = f"MOVE {command} {commandSplit[1]}"
+                        else:
+                            print_client_side("Invalid input. Try again. ")
+                    
+                    # just regular gameplay
                     else:
-                        # print(message)
                         message = f"MOVE {command}"
                         print(message)
                     
                     CLIENT_SOCKET.sendall(message.encode())
 
-
-                #  elif to chec if valiud move, if it is: we will send to the server 
-                    # send to serervr
                 else:
                     toSend = "Command not supported.\n" + USERNAME + "> "
                     print(toSend, end="")
             
-                    
-            if(IS_SERVER == True):    
+             # server in peer to peer server
+            if(IS_SERVER == True):
+                # server directly handles peer input from the peer who is the server  
                 if(command == "tell"):
                     message = f"\n{USERNAME}: {' '.join(commandSplit[1:])}"
                     print_client_side(message)
@@ -947,7 +923,12 @@ def user_interface(sock, listen_port, message_queue):
                 elif(command == "?"):
                     print_game_menu(2)
                 elif(command == "refresh"):
-                    print_board(CURRENT_GAME, "server")
+                    if (GAME_TYPE == "ttt" or GAME_TYPE == "rps"):
+                        print_board(CURRENT_GAME, "server")
+                    elif(GAME_TYPE == "bs"):
+                        print_board_bs(CURRENT_GAME.player1_my_board, "server", True)
+                        print_board_bs(CURRENT_GAME.player1_other_board, "server", False)
+                         
                 elif(command == "exit"):
                     # all exiting has to happen inside server loop
                     CURRENT_GAME.winner = CURRENT_GAME.player2_name
@@ -956,8 +937,7 @@ def user_interface(sock, listen_port, message_queue):
                 elif(command in valid_moves and GAME_TYPE == "ttt"):
                     # check if my turn, do stuff based on that
                     if(CURRENT_GAME.current_player == USERNAME):
-                        gameplay(command, "server", CURRENT_GAME.player1_faction)
-                            
+                        gameplay(command, "server", CURRENT_GAME.player1_faction)     
                     else:
                         print("It is not your turn!\n" + USERNAME + "> ", end="")
 
@@ -976,9 +956,10 @@ def user_interface(sock, listen_port, message_queue):
                 
                 elif (command in bs_moves and GAME_TYPE == "bs"):
                     if(CURRENT_GAME.waiting_for_ship_server == True):
+                        # same code as in server section
                         move = commandSplit[0]
 
-                        row, col = int(move[:-1]), move[-1]  # Extracting row and column from the move
+                        row, col = int(move[:-1]), move[-1]
                         row_index = row - 1
                         column_index = ord(col) - ord('A')
 
@@ -986,7 +967,7 @@ def user_interface(sock, listen_port, message_queue):
 
                         move = commandSplit[1]
                         
-                        row, col = int(move[:-1]), move[-1]  # Extracting row and column from the move
+                        row, col = int(move[:-1]), move[-1]
                         row_index = row - 1
                         column_index = ord(col) - ord('A')
 
@@ -1000,7 +981,7 @@ def user_interface(sock, listen_port, message_queue):
                     
                     else:
                         move = commandSplit[0]
-                        row, col = int(move[:-1]), move[-1]  # Extracting row and column from the move
+                        row, col = int(move[:-1]), move[-1]
                         row_index = row - 1
                         column_index = ord(col) - ord('A')
 
@@ -1024,8 +1005,11 @@ def user_interface(sock, listen_port, message_queue):
                             if(CURRENT_GAME.player1_score == 2):
                                 CURRENT_GAME.winner = CURRENT_GAME.player1_name
                                 CURRENT_GAME.loser = CURRENT_GAME.player2_name
-                                print("You win! \n")
-                                print_client_side('EXIT_NOW')
+                                message_here = f"\nGood job! You sunk all of {CURRENT_GAME.player2_name}'s ships! You win!\n"
+                                print(message_here)
+                                message_here = f"\nYou lose! {CURRENT_GAME.player1_name} sunk all of your ships!"
+                                print_client_side(message_here)
+                                print_client_side('EXIT_NOW')   
                                     
                             else:
                                 messageHere += "\n\nEnter target coordinate:"
@@ -1034,8 +1018,6 @@ def user_interface(sock, listen_port, message_queue):
                         
                         elif (CURRENT_GAME.player1_my_board[row_index][column_index] == 'X'):
                             print("You already hit this spot! \n\nEnter target coordinate:")
-
-
                     
                 else:
                     toSend = "Command not supported.\n" + USERNAME + "> "
@@ -1045,12 +1027,11 @@ def user_interface(sock, listen_port, message_queue):
 # regular server functions
                             
         else:
-            # if command == "who":
-            #     whoCommand(sock)
             if command == "score":
                 scoreCommand(sock)
 
             elif command == "shout":
+                # collect the message and request all users info
                 if len(commandSplit) >= 2:
                     message = ' '.join(commandSplit[1:])
                     global currentMessage
@@ -1059,20 +1040,18 @@ def user_interface(sock, listen_port, message_queue):
                 else:
                     print("Missing message")
                     print(USERNAME + "> ", end="")
-
+            # very similar to shout, just individual
             elif command == "tell":
                 if len(commandSplit) >= 3:
                     commandSplit = allCommand.split(" ", 2)
                     recipient = commandSplit[1] 
                     message = commandSplit[2] 
-                    # global currentMessage
                     currentMessage = message
                     tellCommand(recipient, sock, listen_port)
                 else:
                     print("Missing user or message")
                     print(USERNAME + "> ", end="")
-                
-
+            # triggers exit func
             elif command == "exit":
                 message_queue.put("exit")
                 exitCommand(SOCK, listen_port)
@@ -1080,7 +1059,7 @@ def user_interface(sock, listen_port, message_queue):
             
             elif command == "?":
                 print_menu()
-            
+            # send match request to server to get needed info to send to user
             elif command == "match":
                 if len(commandSplit) >= 3:
                     game_type = commandSplit[2]
@@ -1094,14 +1073,13 @@ def user_interface(sock, listen_port, message_queue):
                 
                         matchCommand(message, player2, sock, listen_port)
                         currentMessage = message
-                        
-                        # global GAME_TYPE
+                        # assign the game type as a global varible
                         GAME_TYPE = game_type
                     
                 else:
                     print("Missing recipient username or game type.")
                     print(USERNAME + "> ", end="")
-
+            # tells server about the decline
             elif command == "decline":
                 if len(commandSplit) >= 2:
                     player2 = commandSplit[1]
@@ -1109,11 +1087,11 @@ def user_interface(sock, listen_port, message_queue):
                     
                     declineCommand(message, player2, sock, listen_port)
                     currentMessage = message
-                
+            
                 else:
                     print("Missing recipient username.")
                     print(USERNAME + "> ", end="")
-
+            # tells server about the accept, also will trigger to start server
             elif command == "accept":
                 if len(commandSplit) >= 2:
                     player2 = commandSplit[1]
@@ -1125,11 +1103,7 @@ def user_interface(sock, listen_port, message_queue):
                 else:
                     print("Missing recipient username.")
                     print(USERNAME + "> ", end="")
-
-        
-            #the accept command will be the exact same
-            #WITH the connection functionality and of course a different message
-                    
+      
             else:
                 toSend = "Command not supported.\n" + USERNAME + "> "
                 print(toSend, end="")
@@ -1151,7 +1125,7 @@ def main(listen_port):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python script.py [listening port]")
+        print("Usage: python3 peer.py <listening port>")
         sys.exit(1)
     listen_port = int(sys.argv[1])
     main(listen_port)
