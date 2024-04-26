@@ -1000,6 +1000,7 @@ def user_interface(sock, listen_port, message_queue):
                             print(toSend, end="")
                     
                     else:
+                        # same code as in server section
                         move = commandSplit[0]
                         row, col = int(move[:-1]), move[-1]
                         row_index = row - 1

@@ -1,9 +1,9 @@
 import socket
 
-CENTRAL_SERVER_IP = '0.0.0.0'  # Listen on all available interfaces
-CENTRAL_SERVER_PORT = 8008  # Port to listen on
-# keep track of username and their points
+CENTRAL_SERVER_IP = '0.0.0.0' 
+CENTRAL_SERVER_PORT = 8008 
 
+# keep track of username and their points
 STATS_LIST = {}
 
 class Client:
@@ -121,13 +121,7 @@ def clientMessage(message, client_address, sock):
                 # adds name of reciever to sendTo list
                 # ensures no duplicates
                 if recipient_username not in client.invitesSentTo:
-                    client.invitesSentTo.append(recipient_username)
-
-                # #test code
-                # print("sender:", client.username)
-                # print("invites sent to:")
-                # for op in client.invitesSentTo:
-                #     print(op)            
+                    client.invitesSentTo.append(recipient_username)           
     
                 break
 
@@ -184,11 +178,7 @@ def clientMessage(message, client_address, sock):
         # similar to decline and match 
         recipient_username = messageSplit[1]
         sender_username = messageSplit[2] 
-        # stores important connection info
-        # recipientAddress = -1
-        # recipientPort = -1
-        # senderAddress = -1
-        # senderPort = -1
+        
         found = False
         error = False
         
@@ -201,16 +191,12 @@ def clientMessage(message, client_address, sock):
                     client.invitesSentTo.remove(sender_username)
                 except ValueError:
                     # if user not found
-                    # print(f"{sender_username} not found!")
                     error = True
             
                 if(error == False):
                     found = True
                     #set their in game status to true
-                    client.inGame = True
-                    #set addresses and ports
-                    # recipientAddress = client.address
-                    # recipientPort = client.port
+                    client.inGame = True               
                 
                 break
         if(error == False):

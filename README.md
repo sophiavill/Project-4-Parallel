@@ -1,6 +1,4 @@
-# Project-4-Parallel
-
-# COP5570-Proj3
+# Term Project: Arcade Server
 
 #####################################################
 # Developed by Sophia Villalonga and Alejandro Ugas
@@ -8,7 +6,10 @@
 # Florida State University Computer Science
 #####################################################
 
-Ensure the server and all peers are on the same linprog. 
+Assumptions:
+The server and all peers are on the same linprog. 
+The users are playing as expected. There is error checking
+to a reasonable extent. 
 
 Run the server:
 python3 central.py
@@ -120,3 +121,11 @@ Inside of a battle ship
 First you will be prompted to place your own two ships
 - to place ships or drop bomb enter the row: (1-5) then enter the column: (A-E):
     - example: 1A or 3B... 
+
+After that you are free to play. You must enter a valid location 
+to drop a bomb on the other player's board. 
+
+
+Bugs:
+- when exiting, the user may need to type exit and hit enter multple times. the user
+will eventually exit, but it may take a few attempts. 
