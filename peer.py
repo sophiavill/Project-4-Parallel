@@ -968,29 +968,33 @@ def user_interface(sock, listen_port, message_queue):
                 
                 elif (command in bs_moves and GAME_TYPE == "bs"):
                     if(CURRENT_GAME.waiting_for_ship_server == True):
-                        if(len(commandSplit) == 2 ):
-                            # same code as in server section
-                            move = commandSplit[0]
+                        if(len(commandSplit) == 2):
+                            if(commandSplit[0] in bs_moves):
+                                # same code as in server section
+                                move = commandSplit[0]
 
-                            row, col = int(move[:-1]), move[-1]
-                            row_index = row - 1
-                            column_index = ord(col) - ord('A')
+                                row, col = int(move[:-1]), move[-1]
+                                row_index = row - 1
+                                column_index = ord(col) - ord('A')
 
-                            CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
+                                CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
 
-                            move = commandSplit[1]
-                            
-                            row, col = int(move[:-1]), move[-1]
-                            row_index = row - 1
-                            column_index = ord(col) - ord('A')
+                                move = commandSplit[1]
+                                
+                                row, col = int(move[:-1]), move[-1]
+                                row_index = row - 1
+                                column_index = ord(col) - ord('A')
 
-                            CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
+                                CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
 
-                            # add ships to board
-                            print_board_bs(CURRENT_GAME.player1_my_board, "server", True)
-                            toSend = "\n\nEnter target coordiante: \n" + USERNAME + "> "
-                            print(toSend, end="")
-                            CURRENT_GAME.waiting_for_ship_server = False
+                                # add ships to board
+                                print_board_bs(CURRENT_GAME.player1_my_board, "server", True)
+                                toSend = "\n\nEnter target coordiante: \n" + USERNAME + "> "
+                                print(toSend, end="")
+                                CURRENT_GAME.waiting_for_ship_server = False
+                            else:
+                                toSend = "\n\nMissing a ship!  \n" + USERNAME + "> "
+                                print(toSend, end="")
                         else:
                             toSend = "\n\nMissing a ship!  \n" + USERNAME + "> "
                             print(toSend, end="")
