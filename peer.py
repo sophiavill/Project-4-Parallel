@@ -570,10 +570,6 @@ def receiveMessages(sock, message_queue):
                                 if data:
                                     if(command == "exit"):
                                         if(CURRENT_GAME.winner == ""):
-                                            message = f"\nGame over. {CURRENT_GAME.player2_name} quit.\n"
-                                            print(message)
-                                            print_client_side(message)
-                                            # assign winner/loser if the user quits
                                             CURRENT_GAME.winner = CURRENT_GAME.player1_name
                                             CURRENT_GAME.loser = CURRENT_GAME.player2_name
 
@@ -615,29 +611,38 @@ def receiveMessages(sock, message_queue):
                                         if(CURRENT_GAME.waiting_for_ship_client == True):
                                             # get location of their own ships
                                             if command == "MOVE":
-                                                # ship 1
-                                                move = commandSplit[1]
+                                                if len(commandSplit) == 3:
+                                                    # ship 1
+                                                    move = commandSplit[1]
 
-                                                row, col = int(move[:-1]), move[-1]  
-                                                row_index = row - 1
-                                                column_index = ord(col) - ord('A')
+                                                    row, col = int(move[:-1]), move[-1]  
+                                                    row_index = row - 1
+                                                    column_index = ord(col) - ord('A')
 
-                                                CURRENT_GAME.player2_my_board[row_index][column_index] = "O"
-                                                
-                                                # ship 1
-                                                move = commandSplit[2]
-                                                
-                                                row, col = int(move[:-1]), move[-1]
-                                                row_index = row - 1
-                                                column_index = ord(col) - ord('A')
+                                                    CURRENT_GAME.player2_my_board[row_index][column_index] = "O"
+                                                    
+                                                    # ship 1
+                                                    move = commandSplit[2]
+                                                    
+                                                    row, col = int(move[:-1]), move[-1]
+                                                    row_index = row - 1
+                                                    column_index = ord(col) - ord('A')
 
-                                                CURRENT_GAME.player2_my_board[row_index][column_index] = "O"
+                                                    CURRENT_GAME.player2_my_board[row_index][column_index] = "O"
 
-                                                # add ships to board
-                                                print_board_bs(current_game.player2_my_board, "client", True)
-                                                CURRENT_GAME.waiting_for_ship_client = False
-                                                print_client_side("\n\nEnter target coordinate: ")
-                                        
+                                                    # add ships to board
+                                                    print_board_bs(current_game.player2_my_board, "client", True)
+                                                    CURRENT_GAME.waiting_for_ship_client = False
+                                                    print_client_side("\n\nEnter target coordinate: ")
+                                                else:
+                                                    print_client_side("\nMissing a ship.")
+
+                                            elif(command == "refresh"):
+                                                print_board_bs(CURRENT_GAME.player2_my_board, "client", True)
+                                                print_board_bs(CURRENT_GAME.player2_other_board, "client", False)
+                                            else:
+                                                print_client_side("\nEnter ships first.")
+                                            
                                         elif(command == "MOVE" and CURRENT_GAME.waiting_for_ship_client == False):
                                             # getting regular coordinate iput from client (player 2)
                                             move = commandSplit[1]
@@ -912,7 +917,6 @@ def user_interface(sock, listen_port, message_queue):
                     # just regular gameplay
                     else:
                         message = f"MOVE {command}"
-                        print(message)
                     
                     CLIENT_SOCKET.sendall(message.encode())
 
@@ -937,10 +941,6 @@ def user_interface(sock, listen_port, message_queue):
                         print_board_bs(CURRENT_GAME.player1_other_board, "server", False)
                          
                 elif(command == "exit"):
-                    message = f"\nGame over. {CURRENT_GAME.player1_name} quit.\n"
-                    print(message)
-                    print_client_side(message)
-                    
                     CURRENT_GAME.winner = CURRENT_GAME.player2_name
                     CURRENT_GAME.loser = CURRENT_GAME.player1_name
                     # all exiting has to happen inside server loop
@@ -968,28 +968,32 @@ def user_interface(sock, listen_port, message_queue):
                 
                 elif (command in bs_moves and GAME_TYPE == "bs"):
                     if(CURRENT_GAME.waiting_for_ship_server == True):
-                        # same code as in server section
-                        move = commandSplit[0]
+                        if(len(commandSplit) == 2 ):
+                            # same code as in server section
+                            move = commandSplit[0]
 
-                        row, col = int(move[:-1]), move[-1]
-                        row_index = row - 1
-                        column_index = ord(col) - ord('A')
+                            row, col = int(move[:-1]), move[-1]
+                            row_index = row - 1
+                            column_index = ord(col) - ord('A')
 
-                        CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
+                            CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
 
-                        move = commandSplit[1]
-                        
-                        row, col = int(move[:-1]), move[-1]
-                        row_index = row - 1
-                        column_index = ord(col) - ord('A')
+                            move = commandSplit[1]
+                            
+                            row, col = int(move[:-1]), move[-1]
+                            row_index = row - 1
+                            column_index = ord(col) - ord('A')
 
-                        CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
+                            CURRENT_GAME.player1_my_board[row_index][column_index] = "O"
 
-                        # add ships to board
-                        print_board_bs(CURRENT_GAME.player1_my_board, "server", True)
-                        toSend = "\n\nEnter target coordiante: \n" + USERNAME + "> "
-                        print(toSend, end="")
-                        CURRENT_GAME.waiting_for_ship_server = False
+                            # add ships to board
+                            print_board_bs(CURRENT_GAME.player1_my_board, "server", True)
+                            toSend = "\n\nEnter target coordiante: \n" + USERNAME + "> "
+                            print(toSend, end="")
+                            CURRENT_GAME.waiting_for_ship_server = False
+                        else:
+                            toSend = "\n\nMissing a ship!  \n" + USERNAME + "> "
+                            print(toSend, end="")
                     
                     else:
                         move = commandSplit[0]
