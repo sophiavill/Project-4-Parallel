@@ -356,7 +356,7 @@ def exitFuncServer(source):
     # tell the client to exit too
     print_client_side('GAMEOVER')
 
-    # print("here in exit. WInner is: ", CURRENT_GAME.winner, " loser is: ", CURRENT_GAME.loser)
+    print("here in exit. WInner is: ", CURRENT_GAME.winner, " loser is: ", CURRENT_GAME.loser)
 
     #tell the central server - all games (except in a draw case) return the same way
     if(GAME_TYPE == "ttt"):
@@ -535,6 +535,9 @@ def receiveMessages(sock, message_queue):
                                         current_game = BSGame()
                                         print("\nSuccess! Game started with:", other_player_name)
 
+                                        current_game.player1_name = USERNAME
+                                        current_game.player2_name = other_player_name
+
                                         # get the server the game menu
                                         print_game_menu(1)
 
@@ -567,9 +570,13 @@ def receiveMessages(sock, message_queue):
                                 if data:
                                     if(command == "exit"):
                                         if(CURRENT_GAME.winner == ""):
+                                            message = f"\nGame over. {CURRENT_GAME.player2_name} quit.\n"
+                                            print(message)
+                                            print_client_side(message)
                                             # assign winner/loser if the user quits
                                             CURRENT_GAME.winner = CURRENT_GAME.player1_name
                                             CURRENT_GAME.loser = CURRENT_GAME.player2_name
+
                                         # exit the game server
                                         exitFuncServer(source)
 
@@ -930,10 +937,15 @@ def user_interface(sock, listen_port, message_queue):
                         print_board_bs(CURRENT_GAME.player1_other_board, "server", False)
                          
                 elif(command == "exit"):
-                    # all exiting has to happen inside server loop
+                    message = f"\nGame over. {CURRENT_GAME.player1_name} quit.\n"
+                    print(message)
+                    print_client_side(message)
+                    
                     CURRENT_GAME.winner = CURRENT_GAME.player2_name
                     CURRENT_GAME.loser = CURRENT_GAME.player1_name
+                    # all exiting has to happen inside server loop
                     print_client_side('EXIT_NOW')
+                
                 elif(command in valid_moves and GAME_TYPE == "ttt"):
                     # check if my turn, do stuff based on that
                     if(CURRENT_GAME.current_player == USERNAME):
